@@ -39,6 +39,26 @@
 <div id="song" class="song"></div>
 
 <script>
+const chordProText =`
+{title: Nada has pensado}
+  {section: Aclamacion}
+  {key: C}
+
+  [DO]Nada [FA]has pen[DO]sado que no puedas h[SOL]acer
+  [DO]Nada [FA]has soñ[DO]ado imposible de v[SOL]er
+  [FA]Ni en el mar, ni en el cielo, nada está lejos de ti
+  Todo es[SOL]tá en tu ad[la-]entro tod[re-]o pued[SOL]es hacerlo
+  [DO]si te fi[(FA)]as de mi.
+  `;
+  // Creamos el parser de ChordPro
+const parser = new ChordSheetJS.ChordProParser();
+const song = parser.parse(chordProText);
+
+// Creamos el "formateador" que dibuja la canción bonita
+const formatter = new ChordSheetJS.HtmlDivFormatter();
+
+// Mostramos la canción en la web
+document.getElementById("song").innerHTML = formatter.format(song);
 </script>
 
 </body>
