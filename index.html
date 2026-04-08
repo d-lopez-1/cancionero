@@ -166,20 +166,7 @@ function renderList() {
   const q = document.getElementById("search").value.toLowerCase().trim();
   const filtered = SONGS
     .map((s, i) => ({ ...s, index: i }))
-    .filter(s => {
-      // Si no hay búsqueda, mostramos todo
-      if (!q) return true;
-      
-      // Búsqueda por título
-      const coincideTitulo = s.title && s.title.toLowerCase().includes(q);
-      
-      // Búsqueda por letra ignorando los acordes
-      // El replace(/\[.*?\]/g, '') elimina todo lo que esté entre corchetes [ ]
-      const letraLimpia = s.lyrics && s.lyrics.replace(/\[.*?\]/g, '').toLowerCase() : '';
-      const coincideLetra = letraLimpia.includes(q);
-      
-      return coincideTitulo || coincideLetra;
-    });
+    .filter(s => !q || s.title.toLowerCase().includes(q) || s.chordpro.toLowerCase().includes(q));
 
   const ul = document.getElementById("song-list");
   ul.innerHTML = filtered.map(s =>
