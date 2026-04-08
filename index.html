@@ -50,7 +50,7 @@
   let song = parser.parse(chordProText);
   
   // Creamos el "formateador" que dibuja la canción bonita
-  const formatter = new ChordSheetJS.HtmlDivFormatter();
+  const formatter = new ChordSheetJS.HtmlTableFormatter();
   
   // Mostramos la canción en la web
   function renderSong() {
