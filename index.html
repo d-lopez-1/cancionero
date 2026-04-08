@@ -94,23 +94,21 @@ const SONGS = [
   {
     title: "Nada has pensado",
     chordpro: `{title: Nada has pensado}
-{key: C}
-
-[C]Nada [F]has pen[C]sado que no puedas h[G]acer
-[C]Nada [F]has soñ[C]ado imposible de v[G]er
-[F]Ni en el mar, ni en el cielo, nada está lejos de ti.
-Todo es[G]tá en tu ad[Am]entro, tod[Dm]o pued[G]es hacerlo
-[C]si te fí[F]as de mi.`
+    {key: C}
+    [C]Nada [F]has pen[C]sado que no puedas h[G]acer
+    [C]Nada [F]has soñ[C]ado imposible de v[G]er
+    [F]Ni en el mar, ni en el cielo, nada está lejos de ti.
+    Todo es[G]tá en tu ad[Am]entro, tod[Dm]o pued[G]es hacerlo
+    [C]si te fí[F]as de mi.`
   },
 
   {
-      title: "Nada nos separará",
-    chordpro:   `{title: Nada nos separará}
-  {key: C}
-  {chorus}
-  [C]Nada nos se[F]par[C]ará, (nada nos se[F]par[C]ará)
-  [C]Nada nos se[F]par[C]ará, (nada nos se[F]par[C]ará)
-  [C]Nada nos [Em]separ[Am]ará[F] del a[G]mor de [C]Dios`
+    title: "Nada nos separará",
+    chordpro: `{title: Nada nos separará}
+    {key: C}
+    [C]Nada nos se[F]par[C]ará, (nada nos se[F]par[C]ará)
+    [C]Nada nos se[F]par[C]ará, (nada nos se[F]par[C]ará)
+    [C]Nada nos s[Em]epar[Am]ará[F] del a[G]mor de [C]Dios`
   }
 
   // ← Añade más canciones aquí, separadas por comas
@@ -177,7 +175,7 @@ function renderList() {
       
       // Búsqueda por letra ignorando los acordes
       // El replace(/\[.*?\]/g, '') elimina todo lo que esté entre corchetes [ ]
-      const letraLimpia = s.lyrics ? s.lyrics.replace(/\[.*?\]/g, '').toLowerCase() : '';
+      const letraLimpia = s.lyrics && s.lyrics.replace(/\[.*?\]/g, '').toLowerCase() : '';
       const coincideLetra = letraLimpia.includes(q);
       
       return coincideTitulo || coincideLetra;
