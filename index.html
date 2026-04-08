@@ -127,33 +127,34 @@ function loadSong(index) {
   renderList();
 }
 
-// Fusiona sílabas de la misma palabra que el formatter parte en celdas distintas
-// (ocurre cuando un acorde cae en medio de una palabra, ej: pen[C]sado)
+// Fusiona sílabas de la misma palabra que el formatter parte en celdas distintas.
+// Estrategia: si una celda no tiene acorde y su lírica no termina en espacio,
+// se fusiona hacia adelante (su texto se prepende a la celda siguiente).
 function fixLyrics(html) {
   return html.replace(/<table class="row">([\s\S]*?)<\/table>/g, (_, inner) => {
     const rows = [...inner.matchAll(/<tr>([\s\S]*?)<\/tr>/g)].map(m => m[1]);
     if (rows.length < 2) return _;
 
-    const chordCells = [...rows[0].matchAll(/<td class="chord">(.*?)<\/td>/g)].map(m => m[1]);
-    const lyricCells = [...rows[1].matchAll(/<td class="lyrics">(.*?)<\/td>/g)].map(m => m[1]);
+    const chords = [...rows[0].matchAll(/<td class="chord">(.*?)<\/td>/g)].map(m => m[1]);
+    const lyrics = [...rows[1].matchAll(/<td class="lyrics">(.*?)<\/td>/g)].map(m => m[1]);
 
-    const mergedChords = [];
-    const mergedLyrics = [];
-
-    for (let i = 0; i < chordCells.length; i++) {
-      const lyric = lyricCells[i] || '';
-      const chord = chordCells[i] || '';
-      if (mergedLyrics.length > 0 && !mergedLyrics[mergedLyrics.length - 1].endsWith(' ')) {
-        mergedLyrics[mergedLyrics.length - 1] += lyric;
-        if (chord) mergedChords[mergedChords.length - 1] = chord;
+    const mc = [], ml = [];
+    let i = 0;
+    while (i < chords.length) {
+      const chord = chords[i];
+      const lyric = lyrics[i] || '';
+      // Si la celda no tiene acorde, la lírica no termina en espacio y hay siguiente celda → fusionar hacia adelante
+      if (!chord && lyric && !lyric.endsWith(' ') && i + 1 < chords.length) {
+        lyrics[i + 1] = lyric + (lyrics[i + 1] || '');
       } else {
-        mergedChords.push(chord);
-        mergedLyrics.push(lyric);
+        mc.push(chord);
+        ml.push(lyric);
       }
+      i++;
     }
 
-    const chordRow = '<tr>' + mergedChords.map(c => `<td class="chord">${c}</td>`).join('') + '</tr>';
-    const lyricRow = '<tr>' + mergedLyrics.map(l => `<td class="lyrics">${l}</td>`).join('') + '</tr>';
+    const chordRow = '<tr>' + mc.map(c => `<td class="chord">${c}</td>`).join('') + '</tr>';
+    const lyricRow = '<tr>' + ml.map(l => `<td class="lyrics">${l}</td>`).join('') + '</tr>';
     return `<table class="row">${chordRow}${lyricRow}</table>`;
   });
 }
