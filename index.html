@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Cancionero</title>
+  <title>Cancionero Pastoral</title>
 
   <!-- Librería que entiende ChordPro -->
   <script src="bundle.js"></script>
@@ -29,7 +29,41 @@
     .chordsheetjs td.lyric {
       vertical-align: top;
     }
-    
+    /*Buscador y lista*/
+     #search {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      margin-bottom: 12px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+ 
+    #song-list {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 20px 0;
+    }
+ 
+    #song-list li {
+      padding: 10px 14px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      margin-bottom: 6px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+ 
+    #song-list li:hover {
+      background: #f5f5f5;
+    }
+ 
+    #song-list li.active {
+      background: #eef6f1;
+      border-color: #1D9E75;
+      font-weight: bold;
+    }
   </style>
 </head>
 
@@ -43,14 +77,21 @@
 <div id="song" class="song"></div>
 
 <script>
-const chordProText = `{title: Nada has pensado}
-{key: C}
-
-[C]Nada [F]has pen[C]sado que no puedas h[G]acer
-[C]Nada [F]has soñ[C]ado imposible de v[G]er
-[F]Ni en el mar, ni en el cielo, nada está lejos de ti.
-Todo es[G]tá en tu ad[Am]entro, tod[Dm]o pued[G]es hacerlo
-[C]si te fí[F]as de mi.`;
+  //LISTADO CANCIONES!!
+const chordProText = [
+  `{title: Nada has pensado}
+  {key: C}
+  [C]Nada [F]has pen[C]sado que no puedas h[G]acer
+  [C]Nada [F]has soñ[C]ado imposible de v[G]er
+  [F]Ni en el mar, ni en el cielo, nada está lejos de ti.
+  Todo es[G]tá en tu ad[Am]entro, tod[Dm]o pued[G]es hacerlo
+  [C]si te fí[F]as de mi.`,
+  `{title: Nada nos separará}
+  {key: C}
+  [C]Nada nos se[F]par[C]ará, (nada nos se[F]par[C]ará)
+  [C]Nada nos se[F]par[C]ará, (nada nos se[F]par[C]ará)
+  [C]Nada nos [Em]separ[Am]ará[F] del a[G]mor de [C]Dios`
+];
 
 // Parser moderno
 const parser = new ChordSheetJS.ChordProParser();
