@@ -6,7 +6,7 @@
 
   <!-- Librería que entiende ChordPro -->
   <script src="bundle.js"></script>
-  
+  <link rel="stylesheet" href="https://unpkg.com/chordsheetjs@latest/dist/chordsheet.min.css">
   <style>
     body {
       font-family: Arial;
@@ -33,35 +33,32 @@
 <div id="song" class="song"></div>
 
 <script>
-  const chordProText =`
-  {title: Nada has pensado}
-  {key: C}
-  
-  [DO]Nada [FA]has pen[DO]sado que no puedas h[SOL]acer
-  [DO]Nada [FA]has soñ[DO]ado imposible de v[SOL]er
-  [FA]Ni en el mar, ni en el cielo, nada está lejos de ti.
-  Todo es[SOL]tá en tu ad[lam]entro tod[rem]o pued[SOL]es hacerlo
-  [DO]si te fí[FA]as de mi.
-  `;
-  // Creamos el parser de ChordPro
-  const parser = new ChordSheetJS.ChordProParser();
-  let song = parser.parse(chordProText);
-  
-  // Creamos el "formateador" que dibuja la canción bonita
-  const formatter = new ChordSheetJS.HtmlTableFormatter();
-  const disp = formatter.format(song);
-  
-  // Mostramos la canción en la web
-  function renderSong() {
-    document.getElementById("song").innerHTML = formatter.format(song);
-  }
-  //Función que cambia el tono
-  function transpose(steps) {
-    song = song.transpose(steps);
-    renderSong();
-  }
-  //Mostrar la cancion otra vez
+const chordProText = `{title: Nada has pensado}
+{key: C}
+
+[C]Nada [F]has pen[C]sado que no puedas h[G]acer
+[C]Nada [F]has soñ[C]ado imposible de v[G]er
+[F]Ni en el mar, ni en el cielo, nada está lejos de ti.
+Todo es[G]tá en tu ad[Am]entro tod[Dm]o pued[G]es hacerlo
+[C]si te fí[F]as de mi.`;
+
+// Parser moderno
+const parser = new ChordSheetJS.ChordProParser();
+let song = parser.parse(chordProText);
+
+// Render moderno
+const formatter = new ChordSheetJS.HtmlDivFormatter();
+
+function renderSong() {
+  document.getElementById("song").innerHTML = formatter.format(song);
+}
+
+function transpose(steps) {
+  song = song.transpose(steps);
   renderSong();
+}
+
+renderSong();
 </script>
 
 </body>
