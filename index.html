@@ -127,9 +127,40 @@ function loadSong(index) {
   renderList();
 }
 
+// Fusiona sílabas de la misma palabra que el formatter parte en celdas distintas
+// (ocurre cuando un acorde cae en medio de una palabra, ej: pen[C]sado)
+function fixLyrics(html) {
+  return html.replace(/<table class="row">([\s\S]*?)<\/table>/g, (_, inner) => {
+    const rows = [...inner.matchAll(/<tr>([\s\S]*?)<\/tr>/g)].map(m => m[1]);
+    if (rows.length < 2) return _;
+
+    const chordCells = [...rows[0].matchAll(/<td class="chord">(.*?)<\/td>/g)].map(m => m[1]);
+    const lyricCells = [...rows[1].matchAll(/<td class="lyrics">(.*?)<\/td>/g)].map(m => m[1]);
+
+    const mergedChords = [];
+    const mergedLyrics = [];
+
+    for (let i = 0; i < chordCells.length; i++) {
+      const lyric = lyricCells[i] || '';
+      const chord = chordCells[i] || '';
+      if (mergedLyrics.length > 0 && !mergedLyrics[mergedLyrics.length - 1].endsWith(' ')) {
+        mergedLyrics[mergedLyrics.length - 1] += lyric;
+        if (chord) mergedChords[mergedChords.length - 1] = chord;
+      } else {
+        mergedChords.push(chord);
+        mergedLyrics.push(lyric);
+      }
+    }
+
+    const chordRow = '<tr>' + mergedChords.map(c => `<td class="chord">${c}</td>`).join('') + '</tr>';
+    const lyricRow = '<tr>' + mergedLyrics.map(l => `<td class="lyrics">${l}</td>`).join('') + '</tr>';
+    return `<table class="row">${chordRow}${lyricRow}</table>`;
+  });
+}
+
 // Render del visor (igual que antes)
 function renderSong() {
-  document.getElementById("song").innerHTML = formatter.format(song);
+  document.getElementById("song").innerHTML = fixLyrics(formatter.format(song));
 }
 
 // Transponer (igual que antes)
