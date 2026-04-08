@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Cancionero</title>
- 
+
   <!-- Librería que entiende ChordPro -->
   <script src="bundle.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/chordsheetjs@latest/dist/chordsheet.min.css">
@@ -14,22 +14,29 @@
       margin: auto;
       padding: 20px;
     }
- 
+
     button {
       font-size: 18px;
       padding: 8px;
       margin: 5px;
     }
- 
-    .chordsheetjs td.chord {
-      text-align: center;
+
+    .chordsheetjs .chord {
+      display: inline-block;
+      min-width: 100%;
+      color: #1a7a4a;
+      font-weight: bold;
+    }
+    .chordsheetjs .word {
+      display: inline-flex;
+      flex-direction: column;
       vertical-align: bottom;
-      padding: 0 2px;
+      margin-right: 4px;
     }
-    .chordsheetjs td.lyric {
-      vertical-align: top;
+    .chordsheetjs .lyrics {
+      white-space: pre;
     }
- 
+
     /* Buscador y lista */
     #search {
       width: 100%;
@@ -40,13 +47,13 @@
       border: 1px solid #ccc;
       border-radius: 6px;
     }
- 
+
     #song-list {
       list-style: none;
       padding: 0;
       margin: 0 0 20px 0;
     }
- 
+
     #song-list li {
       padding: 10px 14px;
       border: 1px solid #ddd;
@@ -55,11 +62,11 @@
       cursor: pointer;
       font-size: 16px;
     }
- 
+
     #song-list li:hover {
       background: #f5f5f5;
     }
- 
+
     #song-list li.active {
       background: #eef6f1;
       border-color: #1D9E75;
@@ -67,55 +74,57 @@
     }
   </style>
 </head>
- 
+
 <body>
- 
+
 <h1>🎵 Cancionero Pastoral</h1>
- 
+
 <input type="text" id="search" placeholder="Buscar canción..." oninput="filterSongs()" />
 <ul id="song-list"></ul>
- 
+
 <button onclick="transpose(-1)">⬇️ Bajar tono</button>
 <button onclick="transpose(1)">⬆️ Subir tono</button>
- 
+
 <div id="song" class="song"></div>
- 
+
 <script>
- 
+
 // ── Canciones en formato ChordPro ──────────────────────────────────────────
 const SONGS = [
   {
     title: "Nada has pensado",
     chordpro: `{title: Nada has pensado}
 {key: C}
+
 [C]Nada [F]has pen[C]sado que no puedas h[G]acer
 [C]Nada [F]has soñ[C]ado imposible de v[G]er
 [F]Ni en el mar, ni en el cielo, nada está lejos de ti.
 Todo es[G]tá en tu ad[Am]entro, tod[Dm]o pued[G]es hacerlo
 [C]si te fí[F]as de mi.`
   },
- 
+
   {
-    title: "Nada nos separará",
+  title: "Nada nos separará",
     chordpro:   `{title: Nada nos separará}
   {key: C}
+  {chorus}
   [C]Nada nos se[F]par[C]ará, (nada nos se[F]par[C]ará)
   [C]Nada nos se[F]par[C]ará, (nada nos se[F]par[C]ará)
   [C]Nada nos [Em]separ[Am]ará[F] del a[G]mor de [C]Dios`
   }
- 
+
   // ← Añade más canciones aquí, separadas por comas
 ];
 // ──────────────────────────────────────────────────────────────────────────
- 
- 
+
+
 // Parser y formatter (igual que antes)
 const parser    = new ChordSheetJS.ChordProParser();
-const formatter = new ChordSheetJS.HtmlTableFormatter();
- 
+const formatter = new ChordSheetJS.HtmlDivFormatter();
+
 let currentIndex = 0;
 let song = parser.parse(SONGS[0].chordpro);
- 
+
 // Carga una canción por índice y resetea la transposición
 function loadSong(index) {
   currentIndex = index;
@@ -123,25 +132,25 @@ function loadSong(index) {
   renderSong();
   renderList();
 }
- 
+
 // Render del visor (igual que antes)
 function renderSong() {
   document.getElementById("song").innerHTML = formatter.format(song);
 }
- 
+
 // Transponer (igual que antes)
 function transpose(steps) {
   song = song.transpose(steps);
   renderSong();
 }
- 
+
 // Render de la lista filtrando por búsqueda
 function renderList() {
   const q = document.getElementById("search").value.toLowerCase().trim();
   const filtered = SONGS
     .map((s, i) => ({ ...s, index: i }))
     .filter(s => !q || s.title.toLowerCase().includes(q) || s.chordpro.toLowerCase().includes(q));
- 
+
   const ul = document.getElementById("song-list");
   ul.innerHTML = filtered.map(s =>
     `<li class="${s.index === currentIndex ? 'active' : ''}" onclick="loadSong(${s.index})">
@@ -149,15 +158,15 @@ function renderList() {
     </li>`
   ).join('');
 }
- 
+
 function filterSongs() {
   renderList();
 }
- 
+
 // Inicio
 renderList();
 renderSong();
 </script>
- 
+
 </body>
 </html>
