@@ -3,10 +3,43 @@
 <head>
   <meta charset="UTF-8">
   <title>Cancionero</title>
+
+  <!-- Librería que entiende ChordPro -->
+  <script src="https://cdn.jsdelivr.net/npm/chordsheetjs@12.3.1/dist/chordsheet.min.js"></script>
+
+  <style>
+    body {
+      font-family: Arial;
+      max-width: 800px;
+      margin: auto;
+      padding: 20px;
+    }
+
+    .song {
+      white-space: pre;
+      font-family: monospace;
+      font-size: 18px;
+    }
+
+    button {
+      font-size: 18px;
+      padding: 8px;
+      margin: 5px;
+    }
+  </style>
 </head>
 
 <body>
-  <h1>🎵 Cancionero Pastoral</h1>
-  <p>La web está funcionando 😍</p>
+
+<h1>🎵 Cancionero Pastoral</h1>
+
+<button onclick="transpose(-1)">⬇️ Bajar tono</button>
+<button onclick="transpose(1)">⬆️ Subir tono</button>
+
+<div id="song" class="song"></div>
+
+<script>
+</script>
+
 </body>
 </html>
