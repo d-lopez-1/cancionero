@@ -6,7 +6,6 @@
 
   <!-- Librería que entiende ChordPro -->
   <script src="bundle.js"></script>
-  <link rel="stylesheet" href="https://unpkg.com/chordsheetjs@latest/dist/chordsheet.min.css">
   <style>
     body {
       font-family: Arial;
@@ -21,14 +20,21 @@
       margin: 5px;
     }
 
-    .chordsheetjs td.chord {
-      text-align: left;
-      vertical-align: bottom;
-      padding: 0;
+    #song pre {
+      font-family: 'Courier New', monospace;
+      font-size: 15px;
+      line-height: 1.6;
+      white-space: pre-wrap;
     }
-    .chordsheetjs td.lyric {
-      vertical-align: top;
-      padding: 0;
+
+    #song .chord-line {
+      color: #1a7a4a;
+      font-weight: bold;
+    }
+
+    #song h1 {
+      font-size: 22px;
+      margin-bottom: 16px;
     }
 
     /* Buscador y lista */
@@ -112,9 +118,9 @@ Todo es[G]tá en tu ad[Am]entro, tod[Dm]o pued[G]es hacerlo
 // ──────────────────────────────────────────────────────────────────────────
 
 
-// Parser y formatter (igual que antes)
+// Parser y formatter
 const parser    = new ChordSheetJS.ChordProParser();
-const formatter = new ChordSheetJS.HtmlTableFormatter();
+const formatter = new ChordSheetJS.ChordsOverWordsFormatter();
 
 let currentIndex = 0;
 let song = parser.parse(SONGS[0].chordpro);
@@ -127,41 +133,28 @@ function loadSong(index) {
   renderList();
 }
 
-// Fusiona sílabas de la misma palabra que el formatter parte en celdas distintas.
-// Estrategia: si una celda no tiene acorde y su lírica no termina en espacio,
-// se fusiona hacia adelante (su texto se prepende a la celda siguiente).
-function fixLyrics(html) {
-  return html.replace(/<table class="row">([\s\S]*?)<\/table>/g, (_, inner) => {
-    const rows = [...inner.matchAll(/<tr>([\s\S]*?)<\/tr>/g)].map(m => m[1]);
-    if (rows.length < 2) return _;
-
-    const chords = [...rows[0].matchAll(/<td class="chord">(.*?)<\/td>/g)].map(m => m[1]);
-    const lyrics = [...rows[1].matchAll(/<td class="lyrics">(.*?)<\/td>/g)].map(m => m[1]);
-
-    const mc = [], ml = [];
-    let i = 0;
-    while (i < chords.length) {
-      const chord = chords[i];
-      const lyric = lyrics[i] || '';
-      // Si la celda no tiene acorde, la lírica no termina en espacio y hay siguiente celda → fusionar hacia adelante
-      if (!chord && lyric && !lyric.endsWith(' ') && i + 1 < chords.length) {
-        lyrics[i + 1] = lyric + (lyrics[i + 1] || '');
-      } else {
-        mc.push(chord);
-        ml.push(lyric);
-      }
-      i++;
-    }
-
-    const chordRow = '<tr>' + mc.map(c => `<td class="chord">${c}</td>`).join('') + '</tr>';
-    const lyricRow = '<tr>' + ml.map(l => `<td class="lyrics">${l}</td>`).join('') + '</tr>';
-    return `<table class="row">${chordRow}${lyricRow}</table>`;
-  });
-}
-
-// Render del visor (igual que antes)
+// Render del visor
 function renderSong() {
-  document.getElementById("song").innerHTML = fixLyrics(formatter.format(song));
+  const text = formatter.format(song);
+  // Extraer título (primera línea "title: ...")
+  const lines = text.split('\n');
+  let title = '';
+  const bodyLines = [];
+  for (const line of lines) {
+    if (line.startsWith('title: ')) { title = line.replace('title: ', ''); }
+    else if (line.startsWith('key: ') || line.startsWith('capo: ')) { /* omitir */ }
+    else { bodyLines.push(line); }
+  }
+  // Colorear líneas de acordes (las que no contienen letras minúsculas)
+  const coloredLines = bodyLines.map(line => {
+    if (line.trim() === '') return line;
+    const isChordLine = !/[a-záéíóúüñ]/i.test(line.replace(/[A-G][#b]?(?:m|maj|min|dim|aug|sus|add)?[0-9]*/g, ''));
+    if (isChordLine && line.trim()) return `<span class="chord-line">${line}</span>`;
+    return line;
+  });
+  document.getElementById("song").innerHTML =
+    (title ? `<h1>${title}</h1>` : '') +
+    '<pre>' + coloredLines.join('\n') + '</pre>';
 }
 
 // Transponer (igual que antes)
