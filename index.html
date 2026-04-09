@@ -191,9 +191,9 @@
  
 const SONGS = [
   {
-    code: "B01",
+    code: "1",
     title: "Nada has pensado",
-    theme: "Entrada",
+    theme: "General",
     chordpro: `{title: Nada has pensado}
 {key: C}
 C    F      C                   G
@@ -209,12 +209,11 @@ si te fías de mi.`
   },
  
   {
-    code: "A02",
+    code: "2",
     title: "Nada nos separará",
-    theme: "Aclamación",
+    theme: "Aclamaciones",
     chordpro: `{title: Nada nos separará}
 {key: C}
-{chorus}
 C          F  C                F  C
 Nada nos separará, (nada nos separará)
 C          F  C                F  C
@@ -232,11 +231,13 @@ Nada nos separará del amor de Dios`
 // ──────────────────────────────────────────────────────────────────────────
  
 const THEMES = [
-  "Alabanza",
-  "Entrada",
-  "María",
-  "Aclamación",
-  // ← Añade más temáticas aquí
+  "General",          // sin número → código libre (101, 102...)
+  "Eucaristía",       // prefijo 2  → 201, 202...
+  "María",            // prefijo 3  → 301, 302...
+  "Adviento-Navidad", // prefijo 4  → 401, 402...
+  "Cuaresma-Pascua",  // prefijo 5  → 501, 502...
+  "SaFa",             // prefijo 6  → 601, 602...
+  "Aclamaciones",     // prefijo A  → A01, A02...
 ];
  
  
@@ -330,7 +331,7 @@ function loadSong(index) {
 // Render del visor
 function renderSong() {
   const s = SONGS[currentIndex];
-  document.getElementById('viewer-title').textContent = `${s.code} · ${s.title}`;
+  document.getElementById('viewer-title').textContent = /^\d+$/.test(s.code) ? s.title : `${s.code} · ${s.title}`;
   document.getElementById('viewer-meta').textContent =
     `${s.theme}  ·  Tonalidad: ${getKey()}` +
     (transposeSteps !== 0 ? `  (${transposeSteps > 0 ? '+' : ''}${transposeSteps} semitonos)` : '');
@@ -376,3 +377,4 @@ renderList();
  
 </body>
 </html>
+ 
