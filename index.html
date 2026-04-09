@@ -3,164 +3,376 @@
 <head>
   <meta charset="UTF-8">
   <title>Cancionero</title>
-
-  <!-- Librería que entiende ChordPro -->
+ 
   <script src="bundle.js"></script>
-  <link rel="stylesheet" href="https://unpkg.com/chordsheetjs@latest/dist/chordsheet.min.css">
   <style>
     body {
       font-family: Arial;
-      max-width: 800px;
+      max-width: 860px;
       margin: auto;
       padding: 20px;
     }
-
-    button {
-      font-size: 18px;
-      padding: 8px;
-      margin: 5px;
+ 
+    h1.main-title {
+      font-size: 26px;
+      margin-bottom: 16px;
     }
-
-    .chordsheetjs td.chord {
-      text-align: left;
-      vertical-align: bottom;
-      padding: 0;
-    }
-    .chordsheetjs td.lyric {
-      vertical-align: top;
-      padding: 0;
-    }
-
-    /* Buscador y lista */
+ 
+    /* Buscador */
     #search {
       width: 100%;
       padding: 10px;
       font-size: 16px;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
       box-sizing: border-box;
       border: 1px solid #ccc;
       border-radius: 6px;
     }
-
+ 
+    /* Filtro de temáticas */
+    #theme-filter {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+ 
+    #theme-filter button {
+      font-size: 13px;
+      padding: 5px 12px;
+      border: 1px solid #ccc;
+      border-radius: 20px;
+      background: #fff;
+      cursor: pointer;
+    }
+ 
+    #theme-filter button:hover {
+      background: #f0f0ee;
+    }
+ 
+    #theme-filter button.active {
+      background: #1a7a4a;
+      color: #fff;
+      border-color: #1a7a4a;
+    }
+ 
+    /* Lista de canciones */
     #song-list {
       list-style: none;
       padding: 0;
       margin: 0 0 20px 0;
     }
-
+ 
+    .theme-group-title {
+      font-size: 12px;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #999;
+      margin: 14px 0 6px 4px;
+    }
+ 
     #song-list li {
-      padding: 10px 14px;
+      padding: 9px 14px;
       border: 1px solid #ddd;
       border-radius: 6px;
-      margin-bottom: 6px;
+      margin-bottom: 5px;
       cursor: pointer;
-      font-size: 16px;
+      font-size: 15px;
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
     }
-
-    #song-list li:hover {
-      background: #f5f5f5;
-    }
-
+ 
+    #song-list li:hover { background: #f5f5f5; }
+ 
     #song-list li.active {
       background: #eef6f1;
-      border-color: #1D9E75;
+      border-color: #1a7a4a;
       font-weight: bold;
+    }
+ 
+    .song-code {
+      font-size: 12px;
+      color: #aaa;
+      font-family: monospace;
+      min-width: 32px;
+    }
+ 
+    li.active .song-code { color: #1a7a4a; }
+ 
+    /* Visor de canción */
+    #song-viewer { display: none; }
+ 
+    #song-viewer h2 {
+      font-size: 22px;
+      margin-bottom: 4px;
+    }
+ 
+    #song-viewer .song-meta {
+      font-size: 13px;
+      color: #999;
+      margin-bottom: 14px;
+    }
+ 
+    .transpose-controls {
+      margin-bottom: 16px;
+    }
+ 
+    .transpose-controls button {
+      font-size: 16px;
+      padding: 7px 14px;
+      margin-right: 6px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      background: #fff;
+      cursor: pointer;
+    }
+ 
+    .transpose-controls button:hover { background: #f0f0ee; }
+ 
+    .transpose-controls .tone-label {
+      font-size: 13px;
+      color: #888;
+    }
+ 
+    #song pre {
+      font-family: 'Courier New', monospace;
+      font-size: 15px;
+      line-height: 1.7;
+      white-space: pre-wrap;
+    }
+ 
+    #song .chord-line {
+      color: #1a7a4a;
+      font-weight: bold;
+    }
+ 
+    .no-results {
+      text-align: center;
+      padding: 32px;
+      color: #aaa;
+      font-size: 14px;
     }
   </style>
 </head>
-
+ 
 <body>
-
-<h1>🎵 Cancionero Pastoral</h1>
-
-<input type="text" id="search" placeholder="Buscar canción..." oninput="filterSongs()" />
+ 
+<h1 class="main-title">🎵 Cancionero Pastoral</h1>
+ 
+<input type="text" id="search" placeholder="Buscar por título, código o letra..." oninput="renderList()" />
+ 
+<div id="theme-filter"></div>
+ 
 <ul id="song-list"></ul>
-
-<button onclick="transpose(-1)">⬇️ Bajar tono</button>
-<button onclick="transpose(1)">⬆️ Subir tono</button>
-
-<div id="song" class="song"></div>
-
+ 
+<div id="song-viewer">
+  <h2 id="viewer-title"></h2>
+  <p class="song-meta" id="viewer-meta"></p>
+  <div class="transpose-controls">
+    <button onclick="transpose(-1)">⬇️ Bajar tono</button>
+    <button onclick="transpose(1)">⬆️ Subir tono</button>
+    <span class="tone-label" id="tone-label"></span>
+  </div>
+  <div id="song"></div>
+</div>
+ 
 <script>
-
-// ── Canciones en formato ChordPro ──────────────────────────────────────────
+ 
+// ── CANCIONES ──────────────────────────────────────────────────────────────
+// Formato de cada canción:
+//   code:     código alfanumérico (ej: "A01")
+//   title:    título de la canción
+//   theme:    temática (debe coincidir exactamente con las definidas en THEMES)
+//   chordpro: cuerpo de la canción en formato ChordsOverWords
+//             (acordes encima de la letra, con {title:} y {key:} al inicio)
+// ──────────────────────────────────────────────────────────────────────────
+ 
 const SONGS = [
   {
+    code: "B01",
     title: "Nada has pensado",
+    theme: "Entrada",
     chordpro: `{title: Nada has pensado}
 {key: C}
-
-[C]Nada [F]has pen[C]sado que no puedas h[G]acer
-[C]Nada [F]has soñ[C]ado imposible de v[G]er
-[F]Ni en el mar, ni en el cielo, nada está lejos de ti.
-Todo es[G]tá en tu ad[Am]entro, tod[Dm]o pued[G]es hacerlo
-[C]si te fí[F]as de mi.`
+C    F      C                   G
+Nada has pensado que no puedas hacer
+C    F      C                 G
+Nada has soñado imposible de ver
+F
+Ni en el mar, ni en el cielo, nada está lejos de ti.
+       G          Am        Dm    G
+Todo está en tu adentro, todo puedes hacerlo
+C       F
+si te fías de mi.`
   },
-
+ 
   {
-      title: "Nada nos separará",
-    chordpro:   `{title: Nada nos separará}
-  {key: C}
-  {chorus}
-  [C]Nada nos se[F]par[C]ará, (nada nos se[F]par[C]ará)
-  [C]Nada nos se[F]par[C]ará, (nada nos se[F]par[C]ará)
-  [C]Nada nos [Em]separ[Am]ará[F] del a[G]mor de [C]Dios`
+    code: "A02",
+    title: "Nada nos separará",
+    theme: "Aclamación",
+    chordpro: `{title: Nada nos separará}
+{key: C}
+{chorus}
+C          F  C                F  C
+Nada nos separará, (nada nos separará)
+C          F  C                F  C
+Nada nos separará, (nada nos separará)
+C         Em  Am  F    G      C
+Nada nos separará del amor de Dios`
   }
-
+ 
   // ← Añade más canciones aquí, separadas por comas
 ];
+ 
+// ── TEMÁTICAS ──────────────────────────────────────────────────────────────
+// Define aquí todas tus temáticas en el orden que quieras mostrarlas.
+// El nombre debe coincidir exactamente con el campo "theme" de cada canción.
 // ──────────────────────────────────────────────────────────────────────────
-
-
-// Parser y formatter (igual que antes)
+ 
+const THEMES = [
+  "Alabanza",
+  "Entrada",
+  "María",
+  "Aclamación",
+  // ← Añade más temáticas aquí
+];
+ 
+ 
+// ── LÓGICA ────────────────────────────────────────────────────────────────
+ 
 const parser    = new ChordSheetJS.ChordsOverWordsParser();
-const formatter = new ChordSheetJS.HtmlTableFormatter();
-
-let currentIndex = 0;
-let song = parser.parse(SONGS[0].chordpro);
-
-// Carga una canción por índice y resetea la transposición
+const formatter = new ChordSheetJS.ChordsOverWordsFormatter();
+ 
+let currentIndex   = null;
+let transposeSteps = 0;
+let song           = null;
+let activeTheme    = null; // null = todas
+ 
+// Botones de temática
+function renderThemeFilter() {
+  const div = document.getElementById('theme-filter');
+  const themesInUse = [...new Set(SONGS.map(s => s.theme))];
+  const visible = THEMES.filter(t => themesInUse.includes(t));
+ 
+  div.innerHTML = ['Todas', ...visible].map(t =>
+    `<button onclick="setTheme(${t === 'Todas' ? 'null' : `'${t}'`})"
+             class="${(t === 'Todas' && activeTheme === null) || t === activeTheme ? 'active' : ''}">
+       ${t}
+     </button>`
+  ).join('');
+}
+ 
+function setTheme(theme) {
+  activeTheme = theme;
+  renderThemeFilter();
+  renderList();
+}
+ 
+// Lista de canciones agrupada por temática
+function renderList() {
+  const q = document.getElementById('search').value.toLowerCase().trim();
+ 
+  const filtered = SONGS
+    .map((s, i) => ({ ...s, index: i }))
+    .filter(s => {
+      if (activeTheme && s.theme !== activeTheme) return false;
+      if (!q) return true;
+      return s.title.toLowerCase().includes(q)
+          || s.code.toLowerCase().includes(q)
+          || s.chordpro.toLowerCase().includes(q);
+    });
+ 
+  const ul = document.getElementById('song-list');
+ 
+  if (!filtered.length) {
+    ul.innerHTML = '<li class="no-results" style="border:none;cursor:default">No se encontraron canciones.</li>';
+    return;
+  }
+ 
+  // Agrupar por temática manteniendo el orden de THEMES
+  const groups = {};
+  for (const s of filtered) {
+    if (!groups[s.theme]) groups[s.theme] = [];
+    groups[s.theme].push(s);
+  }
+ 
+  const orderedThemes = THEMES.filter(t => groups[t]);
+ 
+  let html = '';
+  for (const theme of orderedThemes) {
+    // Mostrar cabecera de grupo solo si hay más de una temática visible
+    if (orderedThemes.length > 1) {
+      html += `<div class="theme-group-title">${theme}</div>`;
+    }
+    for (const s of groups[theme]) {
+      html += `<li class="${s.index === currentIndex ? 'active' : ''}" onclick="loadSong(${s.index})">
+        <span class="song-code">${s.code}</span>${s.title}
+      </li>`;
+    }
+  }
+ 
+  ul.innerHTML = html;
+}
+ 
+// Cargar canción
 function loadSong(index) {
-  currentIndex = index;
+  currentIndex   = index;
+  transposeSteps = 0;
   song = parser.parse(SONGS[index].chordpro);
   renderSong();
   renderList();
+  document.getElementById('song-viewer').style.display = 'block';
+  document.getElementById('song-viewer').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
-
-// Render del visor (igual que antes)
+ 
+// Render del visor
 function renderSong() {
-  document.getElementById("song").innerHTML = formatter.format(song);
+  const s = SONGS[currentIndex];
+  document.getElementById('viewer-title').textContent = `${s.code} · ${s.title}`;
+  document.getElementById('viewer-meta').textContent =
+    `${s.theme}  ·  Tonalidad: ${getKey()}` +
+    (transposeSteps !== 0 ? `  (${transposeSteps > 0 ? '+' : ''}${transposeSteps} semitonos)` : '');
+  document.getElementById('tone-label').textContent =
+    transposeSteps === 0 ? '' : (transposeSteps > 0 ? `+${transposeSteps}` : `${transposeSteps}`);
+ 
+  const text  = formatter.format(song);
+  const lines = text.split('\n');
+  const bodyLines = [];
+ 
+  for (const line of lines) {
+    if (line.startsWith('title: ') || line.startsWith('key: ') || line.startsWith('capo: ')) continue;
+    bodyLines.push(line);
+  }
+ 
+  const coloredLines = bodyLines.map(line => {
+    if (!line.trim()) return line;
+    const isChordLine = !/[a-záéíóúüñ]/i.test(
+      line.replace(/[A-G][#b]?(?:m|maj|min|dim|aug|sus|add)?[0-9]*/g, '')
+    );
+    return isChordLine ? `<span class="chord-line">${line}</span>` : line;
+  });
+ 
+  document.getElementById('song').innerHTML = '<pre>' + coloredLines.join('\n') + '</pre>';
 }
-
-// Transponer (igual que antes)
+ 
+function getKey() {
+  const text = formatter.format(song);
+  const m = text.match(/^key: (.+)$/m);
+  return m ? m[1] : '?';
+}
+ 
 function transpose(steps) {
+  transposeSteps += steps;
   song = song.transpose(steps);
   renderSong();
 }
-
-// Render de la lista filtrando por búsqueda
-function renderList() {
-  const q = document.getElementById("search").value.toLowerCase().trim();
-  const filtered = SONGS
-    .map((s, i) => ({ ...s, index: i }))
-    .filter(s => !q || s.title.toLowerCase().includes(q) || s.chordpro.toLowerCase().includes(q));
-
-  const ul = document.getElementById("song-list");
-  ul.innerHTML = filtered.map(s =>
-    `<li class="${s.index === currentIndex ? 'active' : ''}" onclick="loadSong(${s.index})">
-      ${s.title}
-    </li>`
-  ).join('');
-}
-
-function filterSongs() {
-  renderList();
-}
-
+ 
 // Inicio
+renderThemeFilter();
 renderList();
-renderSong();
 </script>
-
+ 
 </body>
 </html>
