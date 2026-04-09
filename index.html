@@ -292,8 +292,7 @@ function renderList() {
       html += `<div class="theme-group-title">${theme}</div>`;
     }
     for (const s of groups[theme]) {
-      // Código solo numérico (General) → no mostrar delante del título
-      const codeTag = /^\d+$/.test(s.code) ? '' : `<span class="song-code">${s.code}</span>`;
+      const codeTag = `<span class="song-code">${s.code}</span>`;
       html += `<li class="${s.index === currentIndex ? 'active' : ''}" onclick="loadSong(${s.index})">
         ${codeTag}${s.title}
       </li>`;
@@ -315,9 +314,7 @@ function loadSong(index) {
 function renderSong() {
   const s = SONGS[currentIndex];
 
-  // Título: con código delante solo si no es puramente numérico
-  document.getElementById('viewer-title').textContent =
-    /^\d+$/.test(s.code) ? s.title : `${s.code} · ${s.title}`;
+  document.getElementById('viewer-title').textContent = `${s.code} · ${s.title}`;
 
   // Tonalidad: leída de la columna C (s.key), transpuesta si hace falta
   const currentKey = transposeSteps === 0
