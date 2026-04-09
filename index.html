@@ -6,6 +6,7 @@
 
   <!-- Librería que entiende ChordPro -->
   <script src="bundle.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/chordsheetjs@latest/dist/chordsheet.min.css">
   <style>
     body {
       font-family: Arial;
@@ -20,21 +21,14 @@
       margin: 5px;
     }
 
-    #song pre {
-      font-family: 'Courier New', monospace;
-      font-size: 15px;
-      line-height: 1.6;
-      white-space: pre-wrap;
+    .chordsheetjs td.chord {
+      text-align: left;
+      vertical-align: bottom;
+      padding: 0;
     }
-
-    #song .chord-line {
-      color: #1a7a4a;
-      font-weight: bold;
-    }
-
-    #song h1 {
-      font-size: 22px;
-      margin-bottom: 16px;
+    .chordsheetjs td.lyric {
+      vertical-align: top;
+      padding: 0;
     }
 
     /* Buscador y lista */
@@ -108,12 +102,9 @@ Todo es[G]tá en tu ad[Am]entro, tod[Dm]o pued[G]es hacerlo
     chordpro:   `{title: Nada nos separará}
   {key: C}
   {chorus}
-  C          F  C                F  C
-  Nada nos separará, (nada nos separará)
-  C          F  C                F  C
-  Nada nos separará, (nada nos separará)
-  C         Em  Am  F    G      C
-  Nada nos separará del amor de Dios`
+  [C]Nada nos se[F]par[C]ará, (nada nos se[F]par[C]ará)
+  [C]Nada nos se[F]par[C]ará, (nada nos se[F]par[C]ará)
+  [C]Nada nos [Em]separ[Am]ará[F] del a[G]mor de [C]Dios`
   }
 
   // ← Añade más canciones aquí, separadas por comas
@@ -121,9 +112,9 @@ Todo es[G]tá en tu ad[Am]entro, tod[Dm]o pued[G]es hacerlo
 // ──────────────────────────────────────────────────────────────────────────
 
 
-// Parser y formatter
-const parser    = new ChordSheetJS.ChordProParser();
-const formatter = new ChordSheetJS.ChordsOverWordsFormatter();
+// Parser y formatter (igual que antes)
+const parser    = new ChordSheetJS.ChordsOverWordsParser();
+const formatter = new ChordSheetJS.HtmlTableFormatter();
 
 let currentIndex = 0;
 let song = parser.parse(SONGS[0].chordpro);
@@ -136,28 +127,9 @@ function loadSong(index) {
   renderList();
 }
 
-// Render del visor
+// Render del visor (igual que antes)
 function renderSong() {
-  const text = formatter.format(song);
-  // Extraer título (primera línea "title: ...")
-  const lines = text.split('\n');
-  let title = '';
-  const bodyLines = [];
-  for (const line of lines) {
-    if (line.startsWith('title: ')) { title = line.replace('title: ', ''); }
-    else if (line.startsWith('key: ') || line.startsWith('capo: ')) { /* omitir */ }
-    else { bodyLines.push(line); }
-  }
-  // Colorear líneas de acordes (las que no contienen letras minúsculas)
-  const coloredLines = bodyLines.map(line => {
-    if (line.trim() === '') return line;
-    const isChordLine = !/[a-záéíóúüñ]/i.test(line.replace(/[A-G][#b]?(?:m|maj|min|dim|aug|sus|add)?[0-9]*/g, ''));
-    if (isChordLine && line.trim()) return `<span class="chord-line">${line}</span>`;
-    return line;
-  });
-  document.getElementById("song").innerHTML =
-    (title ? `<h1>${title}</h1>` : '') +
-    '<pre>' + coloredLines.join('\n') + '</pre>';
+  document.getElementById("song").innerHTML = formatter.format(song);
 }
 
 // Transponer (igual que antes)
