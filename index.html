@@ -12,12 +12,12 @@
       margin: auto;
       padding: 20px;
     }
- 
+
     h1.main-title {
       font-size: 26px;
       margin-bottom: 16px;
     }
- 
+
     #search {
       width: 100%;
       padding: 10px;
@@ -27,14 +27,14 @@
       border: 1px solid #ccc;
       border-radius: 6px;
     }
- 
+
     #theme-filter {
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
       margin-bottom: 16px;
     }
- 
+
     #theme-filter button {
       font-size: 13px;
       padding: 5px 12px;
@@ -43,21 +43,21 @@
       background: #fff;
       cursor: pointer;
     }
- 
+
     #theme-filter button:hover { background: #f0f0ee; }
- 
+
     #theme-filter button.active {
       background: #1a7a4a;
       color: #fff;
       border-color: #1a7a4a;
     }
- 
+
     #song-list {
       list-style: none;
       padding: 0;
       margin: 0 0 20px 0;
     }
- 
+
     .theme-group-title {
       font-size: 12px;
       font-weight: bold;
@@ -66,7 +66,7 @@
       color: #999;
       margin: 14px 0 6px 4px;
     }
- 
+
     #song-list li {
       padding: 9px 14px;
       border: 1px solid #ddd;
@@ -78,37 +78,37 @@
       align-items: baseline;
       gap: 8px;
     }
- 
+
     #song-list li:hover { background: #f5f5f5; }
- 
+
     #song-list li.active {
       background: #eef6f1;
       border-color: #1a7a4a;
       font-weight: bold;
     }
- 
+
     .song-code {
       font-size: 12px;
       color: #aaa;
       font-family: monospace;
       min-width: 32px;
     }
- 
+
     li.active .song-code { color: #1a7a4a; }
- 
+
     #song-viewer { display: none; }
- 
+
     #song-viewer h2 {
       font-size: 22px;
       margin-bottom: 4px;
     }
- 
+
     #song-viewer .song-meta {
       font-size: 13px;
       color: #999;
       margin-bottom: 14px;
     }
- 
+
     .transpose-controls { 
       margin-bottom: 16px;
       display: flex;
@@ -116,7 +116,7 @@
       gap: 6px;
       align-items: center;
     }
- 
+
     .transpose-controls button {
       font-size: 16px;
       padding: 7px 14px;
@@ -125,28 +125,28 @@
       background: #fff;
       cursor: pointer;
     }
- 
+
     .transpose-controls button:hover { background: #f0f0ee; }
- 
+
     .transpose-controls .tone-label {
       font-size: 13px;
       color: #888;
       margin-left: 4px;
     }
- 
+
     #notation-toggle {
       margin-left: auto;
       font-size: 14px;
       padding: 6px 12px;
     }
- 
+
     #song pre {
       font-family: 'Courier New', monospace;
       font-size: 15px;
       line-height: 1.7;
       white-space: pre-wrap;
     }
- 
+
     #song .chord-line {
       color: #1a7a4a;
       font-weight: bold;
@@ -154,13 +154,13 @@
   </style>
 </head>
 <body>
- 
+
 <h1 class="main-title">🎵 Cancionero Pastoral</h1>
- 
+
 <input type="text" id="search" placeholder="Buscar por título, código o letra..." oninput="renderList()" />
 <div id="theme-filter"></div>
 <ul id="song-list"></ul>
- 
+
 <div id="song-viewer">
   <h2 id="viewer-title"></h2>
   <p class="song-meta" id="viewer-meta"></p>
@@ -168,15 +168,15 @@
     <button onclick="transpose(-1)">⬇️ Bajar tono</button>
     <button onclick="transpose(1)">⬆️ Subir tono</button>
     <span class="tone-label" id="tone-label"></span>
-    <button id="notation-toggle" onclick="toggleNotation()">Do-Re-Mi</button>
+    <button id="notation-toggle" onclick="toggleNotation()">C>>Do</button>
   </div>
   <div id="song"></div>
 </div>
- 
+
 <script>
 // ── CONFIGURACIÓN ────────────────────────────────────────────────────────
 const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSrDH4DpWxwKH0tlNvUvtPclKxPLOjpzat8T_gjtNR6gS2talVoCf98s9G_bdP6YqlmjwLFCTkKM98Y/pub?gid=450216955&single=true&output=csv';
- 
+
 // Orden de las secciones en la interfaz
 const THEMES = [
   "General",
@@ -188,57 +188,54 @@ const THEMES = [
   "Aclamaciones",
 ];
 // ─────────────────────────────────────────────────────────────────────────
- 
+
 const parser    = new ChordSheetJS.ChordsOverWordsParser();
 const formatter = new ChordSheetJS.ChordsOverWordsFormatter();
- 
+
 let SONGS          = [];
 let currentIndex   = null;
 let transposeSteps = 0;
 let song           = null;
 let activeTheme    = null;
 let useSpanishNotation = false;
- 
+
 // ── NOTACIÓN ESPAÑOLA ────────────────────────────────────────────────────
- 
+
 const ENGLISH_TO_SPANISH = {
   'C': 'Do', 'D': 'Re', 'E': 'Mi', 'F': 'Fa', 'G': 'Sol', 'A': 'La', 'B': 'Si',
   'C#': 'Do#', 'D#': 'Re#', 'E#': 'Mi#', 'F#': 'Fa#', 'G#': 'Sol#', 'A#': 'La#', 'B#': 'Si#',
   'Cb': 'Dob', 'Db': 'Reb', 'Eb': 'Mib', 'Fb': 'Fab', 'Gb': 'Solb', 'Ab': 'Lab', 'Bb': 'Sib'
 };
- 
+
 const SPANISH_TO_ENGLISH = {
   'Do': 'C', 'Re': 'D', 'Mi': 'E', 'Fa': 'F', 'Sol': 'G', 'La': 'A', 'Si': 'B',
   'Do#': 'C#', 'Re#': 'D#', 'Mi#': 'E#', 'Fa#': 'F#', 'Sol#': 'G#', 'La#': 'A#', 'Si#': 'B#',
   'Dob': 'Cb', 'Reb': 'Db', 'Mib': 'Eb', 'Fab': 'Fb', 'Solb': 'Gb', 'Lab': 'Ab', 'Sib': 'Bb'
 };
- 
+
 function convertChordNotation(chord, toSpanish) {
   if (!chord) return chord;
   
   const map = toSpanish ? ENGLISH_TO_SPANISH : SPANISH_TO_ENGLISH;
   
-  // Buscar coincidencias de acordes (ej: C, C#, Cm, C#m, Cmaj7, etc.)
-  // Patrón: nota (con # o b opcional) seguida de modificadores opcionales
-  const pattern = toSpanish 
-    ? /\b([A-G][#b]?)([m|maj|min|dim|aug|sus|add]?\d*)\b/g
-    : /\b(Do|Re|Mi|Fa|Sol|La|Si)([#b]?)([m|maj|min|dim|aug|sus|add]?\d*)\b/g;
-  
-  return chord.replace(pattern, (match, note, accidental, modifiers) => {
-    if (toSpanish) {
-      // De inglés a español
-      const fullNote = note; // C, C#, Db, etc.
-      const converted = map[fullNote];
-      return converted ? converted + (modifiers || '') : match;
-    } else {
-      // De español a inglés
-      const fullNote = note + (accidental || ''); // Do, Do#, Dob, etc.
-      const converted = map[fullNote];
-      return converted ? converted + (modifiers || '') : match;
-    }
-  });
+  if (toSpanish) {
+    // De inglés a español: C, C#, Db, Cm, C#m7, etc.
+    return chord.replace(/\b([A-G][#b]?)((?:m|maj|min|dim|aug|sus|add)?\d*)\b/g, 
+      (match, note, modifiers) => {
+        const converted = map[note];
+        return converted ? converted + modifiers : match;
+      });
+  } else {
+    // De español a inglés: Do, Do#, Dob, Dom, Do#m7, etc.
+    return chord.replace(/\b(Do|Re|Mi|Fa|Sol|La|Si)([#b]?)((?:m|maj|min|dim|aug|sus|add)?\d*)\b/g,
+      (match, note, accidental, modifiers) => {
+        const fullNote = note + accidental;
+        const converted = map[fullNote];
+        return converted ? converted + modifiers : match;
+      });
+  }
 }
- 
+
 function convertTextNotation(text, toSpanish) {
   return text.split('\n').map(line => {
     // Detectar si es una línea de acordes (sin letras minúsculas excepto en modificadores)
@@ -253,16 +250,16 @@ function convertTextNotation(text, toSpanish) {
     return line;
   }).join('\n');
 }
- 
+
 function toggleNotation() {
   useSpanishNotation = !useSpanishNotation;
   document.getElementById('notation-toggle').textContent = 
     useSpanishNotation ? 'Do>>C' : 'C>>Do';
   renderSong();
 }
- 
+
 // ── CARGA DESDE GOOGLE SHEETS ────────────────────────────────────────────
- 
+
 function parseCSV(text) {
   const rows = [];
   let row = [], cell = '', inQuotes = false;
@@ -285,7 +282,7 @@ function parseCSV(text) {
   if (cell || row.length) { row.push(cell); if (row.some(c => c.trim())) rows.push(row); }
   return rows;
 }
- 
+
 async function loadFromSheet() {
   document.getElementById('song-list').innerHTML =
     '<li style="border:none;cursor:default;color:#aaa;padding:12px 4px">Cargando canciones...</li>';
@@ -293,7 +290,7 @@ async function loadFromSheet() {
     const resp = await fetch(SHEET_CSV_URL);
     const text = await resp.text();
     const rows = parseCSV(text);
- 
+
     // Fila 0 = cabeceras (Code, Título, Key, Sección, Letra y acordes) → saltar
     // Columnas: A=0 code, B=1 title, C=2 key, D=3 section, E=4 chordpro
     SONGS = rows.slice(1)
@@ -305,7 +302,7 @@ async function loadFromSheet() {
         section:  r[3].trim(),
         chordpro: r[4].trim(),
       }));
- 
+
     renderThemeFilter();
     renderList();
   } catch (e) {
@@ -314,30 +311,30 @@ async function loadFromSheet() {
     console.error(e);
   }
 }
- 
+
 // ── INTERFAZ ─────────────────────────────────────────────────────────────
- 
+
 function renderThemeFilter() {
   const div   = document.getElementById('theme-filter');
   const inUse = new Set(SONGS.map(s => s.section));
   const visible = THEMES.filter(t => inUse.has(t));
- 
+
   div.innerHTML = ['Todas', ...visible].map(t => {
     const isActive = (t === 'Todas' && activeTheme === null) || t === activeTheme;
     const onclick  = t === 'Todas' ? 'setTheme(null)' : `setTheme('${t}')`;
     return `<button onclick="${onclick}" class="${isActive ? 'active' : ''}">${t}</button>`;
   }).join('');
 }
- 
+
 function setTheme(theme) {
   activeTheme = theme;
   renderThemeFilter();
   renderList();
 }
- 
+
 function renderList() {
   const q = document.getElementById('search').value.toLowerCase().trim();
- 
+
   const filtered = SONGS
     .map((s, i) => ({ ...s, index: i }))
     .filter(s => {
@@ -347,14 +344,14 @@ function renderList() {
           || s.code.toLowerCase().includes(q)
           || s.chordpro.toLowerCase().includes(q);
     });
- 
+
   const ul = document.getElementById('song-list');
- 
+
   if (!filtered.length) {
     ul.innerHTML = '<li style="border:none;cursor:default;color:#aaa;padding:12px 4px">No se encontraron canciones.</li>';
     return;
   }
- 
+
   // Agrupar por sección manteniendo el orden de THEMES
   const groups = {};
   for (const s of filtered) {
@@ -362,7 +359,7 @@ function renderList() {
     groups[s.section].push(s);
   }
   const orderedThemes = THEMES.filter(t => groups[t]);
- 
+
   let html = '';
   for (const theme of orderedThemes) {
     if (orderedThemes.length > 1) {
@@ -377,7 +374,7 @@ function renderList() {
   }
   ul.innerHTML = html;
 }
- 
+
 function loadSong(index) {
   currentIndex   = index;
   transposeSteps = 0;
@@ -387,12 +384,12 @@ function loadSong(index) {
   document.getElementById('song-viewer').style.display = 'block';
   document.getElementById('song-viewer').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
- 
+
 function renderSong() {
   const s = SONGS[currentIndex];
- 
+
   document.getElementById('viewer-title').textContent = `${s.code} · ${s.title}`;
- 
+
   // Tonalidad: leída de la columna C (s.key), transpuesta si hace falta
   let currentKey = transposeSteps === 0
     ? s.key
@@ -402,14 +399,14 @@ function renderSong() {
   if (useSpanishNotation) {
     currentKey = convertChordNotation(currentKey, true);
   }
- 
+
   document.getElementById('viewer-meta').textContent =
     `${s.section}  ·  Tonalidad: ${currentKey}` +
     (transposeSteps !== 0 ? `  (${transposeSteps > 0 ? '+' : ''}${transposeSteps} semitonos)` : '');
- 
+
   document.getElementById('tone-label').textContent =
     transposeSteps === 0 ? '' : (transposeSteps > 0 ? `+${transposeSteps}` : `${transposeSteps}`);
- 
+
   // Render de la letra con acordes coloreados
   let text = formatter.format(song);
   
@@ -421,7 +418,7 @@ function renderSong() {
   const bodyLines = text.split('\n').filter(l =>
     !l.startsWith('title: ') && !l.startsWith('key: ') && !l.startsWith('capo: ')
   );
- 
+
   const coloredLines = bodyLines.map(line => {
     if (!line.trim()) return line;
     const isChordLine = !/[a-záéíóúüñ]/i.test(
@@ -430,10 +427,10 @@ function renderSong() {
     );
     return isChordLine ? `<span class="chord-line">${line}</span>` : line;
   });
- 
+
   document.getElementById('song').innerHTML = '<pre>' + coloredLines.join('\n') + '</pre>';
 }
- 
+
 // Transponer la tonalidad para mostrarla en la meta-info
 function transposeChord(key, steps) {
   const CHROMATIC  = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -443,16 +440,16 @@ function transposeChord(key, steps) {
   if (idx === -1) return key;
   return CHROMATIC[((idx + steps) % 12 + 12) % 12];
 }
- 
+
 function transpose(steps) {
   transposeSteps += steps;
   song = song.transpose(steps);
   renderSong();
 }
- 
+
 // ── INICIO ────────────────────────────────────────────────────────────────
 loadFromSheet();
 </script>
- 
+
 </body>
 </html>
