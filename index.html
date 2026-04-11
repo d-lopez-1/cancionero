@@ -190,7 +190,7 @@
       <button onclick="changeFontSize(-1)">A-</button>
       <button onclick="changeFontSize(1)">A+</button>
     </div>
-    <button id="notation-toggle" onclick="toggleNotation()">Do-Re-Mi</button>
+    <button id="notation-toggle" onclick="toggleNotation()">C>>DO</button>
   </div>
   <div id="song"></div>
 </div>
@@ -277,7 +277,7 @@ function convertTextNotation(text, toSpanish) {
 function toggleNotation() {
   useSpanishNotation = !useSpanishNotation;
   document.getElementById('notation-toggle').textContent = 
-    useSpanishNotation ? 'C-D-E' : 'Do-Re-Mi';
+    useSpanishNotation ? 'DO>>C' : 'C>>DO';
   renderSong();
 }
 
