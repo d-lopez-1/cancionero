@@ -134,15 +134,32 @@
       margin-left: 4px;
     }
 
+    .controls-divider {
+      width: 1px;
+      height: 24px;
+      background: #ddd;
+      margin: 0 4px;
+    }
+
     #notation-toggle {
       margin-left: auto;
       font-size: 14px;
       padding: 6px 12px;
     }
 
+    .font-size-controls {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .font-size-controls button {
+      font-size: 14px;
+      padding: 6px 10px;
+    }
+
     #song pre {
       font-family: 'Courier New', monospace;
-      font-size: 15px;
       line-height: 1.7;
       white-space: pre-wrap;
     }
@@ -168,6 +185,11 @@
     <button onclick="transpose(-1)">⬇️ Bajar tono</button>
     <button onclick="transpose(1)">⬆️ Subir tono</button>
     <span class="tone-label" id="tone-label"></span>
+    <div class="controls-divider"></div>
+    <div class="font-size-controls">
+      <button onclick="changeFontSize(-1)">A-</button>
+      <button onclick="changeFontSize(1)">A+</button>
+    </div>
     <button id="notation-toggle" onclick="toggleNotation()">Do-Re-Mi</button>
   </div>
   <div id="song"></div>
@@ -198,6 +220,7 @@ let transposeSteps = 0;
 let song           = null;
 let activeTheme    = null;
 let useSpanishNotation = false;
+let fontSize       = 15; // Tamaño de letra predeterminado
 
 // ── NOTACIÓN ESPAÑOLA ────────────────────────────────────────────────────
 
@@ -255,6 +278,13 @@ function toggleNotation() {
   useSpanishNotation = !useSpanishNotation;
   document.getElementById('notation-toggle').textContent = 
     useSpanishNotation ? 'C-D-E' : 'Do-Re-Mi';
+  renderSong();
+}
+
+function changeFontSize(delta) {
+  fontSize += delta;
+  // Limitar el tamaño entre 10px y 24px
+  fontSize = Math.max(10, Math.min(24, fontSize));
   renderSong();
 }
 
@@ -435,7 +465,9 @@ function renderSong() {
     return isChordLine ? `<span class="chord-line">${line}</span>` : line;
   });
 
-  document.getElementById('song').innerHTML = '<pre>' + coloredLines.join('\n') + '</pre>';
+  const preElement = document.getElementById('song');
+  preElement.innerHTML = '<pre>' + coloredLines.join('\n') + '</pre>';
+  preElement.querySelector('pre').style.fontSize = fontSize + 'px';
 }
 
 // Transponer la tonalidad para mostrarla en la meta-info
