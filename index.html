@@ -168,7 +168,7 @@
     <button onclick="transpose(-1)">⬇️ Bajar tono</button>
     <button onclick="transpose(1)">⬆️ Subir tono</button>
     <span class="tone-label" id="tone-label"></span>
-    <button id="notation-toggle" onclick="toggleNotation()">C>>Do</button>
+    <button id="notation-toggle" onclick="toggleNotation()">Do-Re-Mi</button>
   </div>
   <div id="song"></div>
 </div>
@@ -254,7 +254,7 @@ function convertTextNotation(text, toSpanish) {
 function toggleNotation() {
   useSpanishNotation = !useSpanishNotation;
   document.getElementById('notation-toggle').textContent = 
-    useSpanishNotation ? 'Do>>C' : 'C>>Do';
+    useSpanishNotation ? 'C-D-E' : 'Do-Re-Mi';
   renderSong();
 }
 
@@ -421,10 +421,17 @@ function renderSong() {
 
   const coloredLines = bodyLines.map(line => {
     if (!line.trim()) return line;
-    const isChordLine = !/[a-záéíóúüñ]/i.test(
-      line.replace(/[A-G][#b]?(?:m|maj|min|dim|aug|sus|add)?[0-9]*/g, '')
-        .replace(/(?:Do|Re|Mi|Fa|Sol|La|Si)[#b]?(?:m|maj|min|dim|aug|sus|add)?[0-9]*/g, '')
-    );
+    
+    // Remover todos los acordes (ingleses y españoles) de la línea
+    let testLine = line;
+    // Remover acordes ingleses
+    testLine = testLine.replace(/\b[A-G][#b]?(?:m|maj|min|dim|aug|sus|add)?\d*\b/g, '');
+    // Remover acordes españoles
+    testLine = testLine.replace(/\b(?:Do|Re|Mi|Fa|Sol|La|Si)[#b]?(?:m|maj|min|dim|aug|sus|add)?\d*\b/g, '');
+    
+    // Si después de remover acordes no quedan letras minúsculas (español) ni vocales comunes, es línea de acordes
+    const isChordLine = !/[a-záéíóúüñ]/i.test(testLine);
+    
     return isChordLine ? `<span class="chord-line">${line}</span>` : line;
   });
 
