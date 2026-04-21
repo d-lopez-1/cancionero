@@ -190,7 +190,7 @@
       <button onclick="changeFontSize(-1)">A-</button>
       <button onclick="changeFontSize(1)">A+</button>
     </div>
-    <button id="notation-toggle" onclick="toggleNotation()">C>>DO</button>
+    <button id="notation-toggle" onclick="toggleNotation()">Do-Re-Mi</button>
   </div>
   <div id="song"></div>
 </div>
@@ -246,15 +246,41 @@ function convertChordNotation(chord, toSpanish) {
     return chord.replace(/\b([A-G][#b]?)((?:m|maj|min|dim|aug|sus|add)?\d*)\b/g, 
       (match, note, modifiers) => {
         const converted = map[note];
-        return converted ? converted + modifiers : match;
+        if (!converted) return match;
+        
+        // Calcular la diferencia de longitud
+        const originalLength = note.length + modifiers.length;
+        const newLength = converted.length + modifiers.length;
+        const diff = originalLength - newLength;
+        
+        // Si el nuevo acorde es más largo, necesitamos quitar espacios después
+        // Si es más corto, añadir espacios
+        return converted + modifiers + (diff > 0 ? ' '.repeat(diff) : '');
       });
   } else {
     // De español a inglés: Do, Do#, Dob, Dom, Do#m7, etc.
-    return chord.replace(/\b(Do|Re|Mi|Fa|Sol|La|Si)([#b]?)((?:m|maj|min|dim|aug|sus|add)?\d*)\b/g,
-      (match, note, accidental, modifiers) => {
+    return chord.replace(/\b(Do|Re|Mi|Fa|Sol|La|Si)([#b]?)((?:m|maj|min|dim|aug|sus|add)?\d*)\b(\s*)/g,
+      (match, note, accidental, modifiers, trailingSpaces) => {
         const fullNote = note + accidental;
         const converted = map[fullNote];
-        return converted ? converted + modifiers : match;
+        if (!converted) return match;
+        
+        // Calcular la diferencia de longitud
+        const originalLength = fullNote.length + modifiers.length;
+        const newLength = converted.length + modifiers.length;
+        const diff = newLength - originalLength;
+        
+        // Ajustar espacios: si el nuevo es más corto, añadimos espacios; si es más largo, quitamos
+        let adjustedSpaces = trailingSpaces;
+        if (diff < 0 && trailingSpaces.length >= Math.abs(diff)) {
+          // El nuevo acorde es más corto, añadimos espacios
+          adjustedSpaces = ' '.repeat(trailingSpaces.length - diff);
+        } else if (diff > 0 && trailingSpaces.length >= diff) {
+          // El nuevo acorde es más largo, quitamos espacios si los hay
+          adjustedSpaces = trailingSpaces.slice(diff);
+        }
+        
+        return converted + modifiers + adjustedSpaces;
       });
   }
 }
@@ -277,7 +303,7 @@ function convertTextNotation(text, toSpanish) {
 function toggleNotation() {
   useSpanishNotation = !useSpanishNotation;
   document.getElementById('notation-toggle').textContent = 
-    useSpanishNotation ? 'DO>>C' : 'C>>DO';
+    useSpanishNotation ? 'C-D-E' : 'Do-Re-Mi';
   renderSong();
 }
 
@@ -491,4 +517,5 @@ loadFromSheet();
 </script>
 
 </body>
+</html>
 </html>
