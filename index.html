@@ -243,115 +243,45 @@ function convertChordNotation(line, toSpanish) {
   
   if (toSpanish) {
     // De inglés a español
-    // Buscar todos los acordes en la línea
-    const pattern = /([A-G][#b]?(?:m|maj|min|dim|aug|sus|add)?\d*)/g;
-    let result = '';
-    let lastIndex = 0;
-    let match;
-    
-    while ((match = pattern.exec(line)) !== null) {
-      const chord = match[0];
-      const chordStart = match.index;
-      
-      // Añadir todo lo que hay antes del acorde
-      result += line.substring(lastIndex, chordStart);
-      
-      // Convertir el acorde
-      const noteMatch = chord.match(/^([A-G][#b]?)(.*)/);
-      if (noteMatch) {
+    return line.replace(/([A-G][#b]?)(?:m|maj|min|dim|aug|sus|add)?[0-9]*(\s*)/g, 
+      (match, noteBase, spaces) => {
+        // Separar nota de modificadores
+        const noteMatch = match.match(/^([A-G][#b]?)((?:m|maj|min|dim|aug|sus|add)?[0-9]*)/);
+        if (!noteMatch) return match;
+        
         const [, note, modifiers] = noteMatch;
         const converted = map[note];
+        if (!converted) return match;
         
-        if (converted) {
-          const newChord = converted + modifiers;
-          const lengthDiff = newChord.length - chord.length;
-          
-          // Buscar espacios después del acorde
-          let spacesAfter = 0;
-          let i = pattern.lastIndex;
-          while (i < line.length && line[i] === ' ') {
-            spacesAfter++;
-            i++;
-          }
-          
-          // Ajustar espacios
-          if (lengthDiff > 0 && spacesAfter >= lengthDiff) {
-            // El nuevo acorde es más largo, quitar espacios
-            result += newChord;
-            pattern.lastIndex += spacesAfter - lengthDiff;
-          } else if (lengthDiff < 0) {
-            // El nuevo acorde es más corto, añadir espacios
-            result += newChord + ' '.repeat(-lengthDiff);
-          } else {
-            result += newChord;
-          }
-        } else {
-          result += chord;
-        }
-      } else {
-        result += chord;
-      }
-      
-      lastIndex = pattern.lastIndex;
-    }
-    
-    // Añadir el resto de la línea
-    result += line.substring(lastIndex);
-    return result;
-    
+        const oldChord = note + modifiers;
+        const newChord = converted + modifiers;
+        const lengthDiff = newChord.length - oldChord.length;
+        
+        // Ajustar espacios: si el nuevo es más largo, quitamos espacios; si es más corto, añadimos
+        const newSpaces = Math.max(0, spaces.length - lengthDiff);
+        return newChord + ' '.repeat(newSpaces);
+      });
   } else {
     // De español a inglés
-    const pattern = /(Do|Re|Mi|Fa|Sol|La|Si)([#b]?(?:m|maj|min|dim|aug|sus|add)?\d*)/g;
-    let result = '';
-    let lastIndex = 0;
-    let match;
-    
-    while ((match = pattern.exec(line)) !== null) {
-      const chord = match[0];
-      const chordStart = match.index;
-      const note = match[1];
-      const accidental = match[2] && (match[2][0] === '#' || match[2][0] === 'b') ? match[2][0] : '';
-      const modifiers = accidental ? match[2].substring(1) : match[2];
-      
-      // Añadir todo lo que hay antes del acorde
-      result += line.substring(lastIndex, chordStart);
-      
-      const fullNote = note + accidental;
-      const converted = map[fullNote];
-      
-      if (converted) {
+    return line.replace(/(Do|Re|Mi|Fa|Sol|La|Si)([#b]?)(?:m|maj|min|dim|aug|sus|add)?[0-9]*(\s*)/g,
+      (match, note, accidental, spaces) => {
+        // Separar nota de modificadores
+        const fullMatch = match.match(/^(Do|Re|Mi|Fa|Sol|La|Si)([#b]?)((?:m|maj|min|dim|aug|sus|add)?[0-9]*)/);
+        if (!fullMatch) return match;
+        
+        const [, noteName, acc, modifiers] = fullMatch;
+        const fullNote = noteName + acc;
+        const converted = map[fullNote];
+        if (!converted) return match;
+        
+        const oldChord = fullNote + modifiers;
         const newChord = converted + modifiers;
-        const lengthDiff = newChord.length - chord.length;
+        const lengthDiff = newChord.length - oldChord.length;
         
-        // Buscar espacios después del acorde
-        let spacesAfter = 0;
-        let i = pattern.lastIndex;
-        while (i < line.length && line[i] === ' ') {
-          spacesAfter++;
-          i++;
-        }
-        
-        // Ajustar espacios
-        if (lengthDiff > 0 && spacesAfter >= lengthDiff) {
-          // El nuevo acorde es más largo, quitar espacios
-          result += newChord;
-          pattern.lastIndex += spacesAfter - lengthDiff;
-        } else if (lengthDiff < 0) {
-          // El nuevo acorde es más corto, añadir espacios
-          result += newChord + ' '.repeat(-lengthDiff);
-        } else {
-          result += newChord;
-        }
-      } else {
-        result += chord;
-      }
-      
-      lastIndex = pattern.lastIndex;
-    }
-    
-    // Añadir el resto de la línea
-    result += line.substring(lastIndex);
-    return result;
+        // Ajustar espacios: si el nuevo es más largo, quitamos espacios; si es más corto, añadimos
+        const newSpaces = Math.max(0, spaces.length - lengthDiff);
+        return newChord + ' '.repeat(newSpaces);
+      });
   }
 }
 
@@ -587,4 +517,5 @@ loadFromSheet();
 </script>
 
 </body>
+</html>
 </html>
