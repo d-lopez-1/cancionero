@@ -6,168 +6,34 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🎵</text></svg>">
   <script src="bundle.js"></script>
   <style>
-    body {
-      font-family: Arial;
-      max-width: 860px;
-      margin: auto;
-      padding: 20px;
-    }
-
-    h1.main-title {
-      font-size: 26px;
-      margin-bottom: 16px;
-    }
-
-    #search {
-      width: 100%;
-      padding: 10px;
-      font-size: 16px;
-      margin-bottom: 10px;
-      box-sizing: border-box;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-    }
-
-    #theme-filter {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-bottom: 16px;
-    }
-
-    #theme-filter button {
-      font-size: 13px;
-      padding: 5px 12px;
-      border: 1px solid #ccc;
-      border-radius: 20px;
-      background: #fff;
-      cursor: pointer;
-    }
-
-    #theme-filter button:hover { background: #f0f0ee; }
-
-    #theme-filter button.active {
-      background: #1a7a4a;
-      color: #fff;
-      border-color: #1a7a4a;
-    }
-
-    #song-list {
-      list-style: none;
-      padding: 0;
-      margin: 0 0 20px 0;
-    }
-
-    .theme-group-title {
-      font-size: 12px;
-      font-weight: bold;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: #999;
-      margin: 14px 0 6px 4px;
-    }
-
-    #song-list li {
-      padding: 9px 14px;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      margin-bottom: 5px;
-      cursor: pointer;
-      font-size: 15px;
-      display: flex;
-      align-items: baseline;
-      gap: 8px;
-    }
-
-    #song-list li:hover { background: #f5f5f5; }
-
-    #song-list li.active {
-      background: #eef6f1;
-      border-color: #1a7a4a;
-      font-weight: bold;
-    }
-
-    .song-code {
-      font-size: 12px;
-      color: #aaa;
-      font-family: monospace;
-      min-width: 32px;
-    }
-
-    li.active .song-code { color: #1a7a4a; }
-
-    #song-viewer { display: none; }
-
-    #song-viewer h2 {
-      font-size: 22px;
-      margin-bottom: 4px;
-    }
-
-    #song-viewer .song-meta {
-      font-size: 13px;
-      color: #999;
-      margin-bottom: 14px;
-    }
-
-    .transpose-controls { 
-      margin-bottom: 16px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      align-items: center;
-    }
-
-    .transpose-controls button {
-      font-size: 16px;
-      padding: 7px 14px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      background: #fff;
-      cursor: pointer;
-    }
-
-    .transpose-controls button:hover { background: #f0f0ee; }
-
-    .transpose-controls .tone-label {
-      font-size: 13px;
-      color: #888;
-      margin-left: 4px;
-    }
-
-    .controls-divider {
-      width: 1px;
-      height: 24px;
-      background: #ddd;
-      margin: 0 4px;
-    }
-
-    #notation-toggle {
-      margin-left: auto;
-      font-size: 14px;
-      padding: 6px 12px;
-    }
-
-    .font-size-controls {
-      display: flex;
-      gap: 6px;
-      align-items: center;
-    }
-
-    .font-size-controls button {
-      font-size: 14px;
-      padding: 6px 10px;
-    }
-
-    #song pre {
-      font-family: 'Courier New', monospace;
-      line-height: 1.7;
-      white-space: pre-wrap;
-    }
-
-    #song .chord-line {
-      color: #1a7a4a;
-      font-weight: bold;
-    }
+    /* … (sin cambios, igual que antes) … */
+    body { font-family: Arial; max-width: 860px; margin: auto; padding: 20px; }
+    h1.main-title { font-size: 26px; margin-bottom: 16px; }
+    #search { width:100%; padding:10px; font-size:16px; margin-bottom:10px; box-sizing:border-box; border:1px solid #ccc; border-radius:6px; }
+    #theme-filter { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px; }
+    #theme-filter button { font-size:13px; padding:5px 12px; border:1px solid #ccc; border-radius:20px; background:#fff; cursor:pointer; }
+    #theme-filter button:hover { background:#f0f0ee; }
+    #theme-filter button.active { background:#1a7a4a; color:#fff; border-color:#1a7a4a; }
+    #song-list { list-style:none; padding:0; margin:0 0 20px 0; }
+    .theme-group-title { font-size:12px; font-weight:bold; text-transform:uppercase; letter-spacing:.06em; color:#999; margin:14px 0 6px 4px; }
+    #song-list li { padding:9px 14px; border:1px solid #ddd; border-radius:6px; margin-bottom:5px; cursor:pointer; font-size:15px; display:flex; align-items:baseline; gap:8px; }
+    #song-list li:hover { background:#f5f5f5; }
+    #song-list li.active { background:#eef6f1; border-color:#1a7a4a; font-weight:bold; }
+    .song-code { font-size:12px; color:#aaa; font-family:monospace; min-width:32px; }
+    li.active .song-code { color:#1a7a4a; }
+    #song-viewer { display:none; }
+    #song-viewer h2 { font-size:22px; margin-bottom:4px; }
+    #song-viewer .song-meta { font-size:13px; color:#999; margin-bottom:14px; }
+    .transpose-controls { margin-bottom:16px; display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+    .transpose-controls button { font-size:16px; padding:7px 14px; border:1px solid #ccc; border-radius:6px; background:#fff; cursor:pointer; }
+    .transpose-controls button:hover { background:#f0f0ee; }
+    .transpose-controls .tone-label { font-size:13px; color:#888; margin-left:4px; }
+    .controls-divider { width:1px; height:24px; background:#ddd; margin:0 4px; }
+    #notation-toggle { margin-left:auto; font-size:14px; padding:6px 12px; }
+    .font-size-controls { display:flex; gap:6px; align-items:center; }
+    .font-size-controls button { font-size:14px; padding:6px 10px; }
+    #song pre { font-family:'Courier New',monospace; line-height:1.7; white-space:pre-wrap; }
+    #song .chord-line { color:#1a7a4a; font-weight:bold; }
   </style>
 </head>
 <body>
@@ -199,7 +65,6 @@
 // ── CONFIGURACIÓN ────────────────────────────────────────────────────────
 const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSrDH4DpWxwKH0tlNvUvtPclKxPLOjpzat8T_gjtNR6gS2talVoCf98s9G_bdP6YqlmjwLFCTkKM98Y/pub?gid=450216955&single=true&output=csv';
 
-// Orden de las secciones en la interfaz
 const THEMES = [
   "General",
   "Eucaristía",
@@ -220,65 +85,71 @@ let transposeSteps = 0;
 let song           = null;
 let activeTheme    = null;
 let useSpanishNotation = false;
-let fontSize       = 15; // Tamaño de letra predeterminado
+let fontSize       = 15;
 
 // ── NOTACIÓN ESPAÑOLA ────────────────────────────────────────────────────
 
 const ENGLISH_TO_SPANISH = {
-  'C': 'Do', 'D': 'Re', 'E': 'Mi', 'F': 'Fa', 'G': 'Sol', 'A': 'La', 'B': 'Si',
-  'C#': 'Do#', 'D#': 'Re#', 'E#': 'Mi#', 'F#': 'Fa#', 'G#': 'Sol#', 'A#': 'La#', 'B#': 'Si#',
-  'Cb': 'Dob', 'Db': 'Reb', 'Eb': 'Mib', 'Fb': 'Fab', 'Gb': 'Solb', 'Ab': 'Lab', 'Bb': 'Sib'
+  'C':'Do','D':'Re','E':'Mi','F':'Fa','G':'Sol','A':'La','B':'Si',
+  'C#':'Do#','D#':'Re#','E#':'Mi#','F#':'Fa#','G#':'Sol#','A#':'La#','B#':'Si#',
+  'Cb':'Dob','Db':'Reb','Eb':'Mib','Fb':'Fab','Gb':'Solb','Ab':'Lab','Bb':'Sib'
 };
 
 const SPANISH_TO_ENGLISH = {
-  'Do': 'C', 'Re': 'D', 'Mi': 'E', 'Fa': 'F', 'Sol': 'G', 'La': 'A', 'Si': 'B',
-  'Do#': 'C#', 'Re#': 'D#', 'Mi#': 'E#', 'Fa#': 'F#', 'Sol#': 'G#', 'La#': 'A#', 'Si#': 'B#',
-  'Dob': 'Cb', 'Reb': 'Db', 'Mib': 'Eb', 'Fab': 'Fb', 'Solb': 'Gb', 'Lab': 'Ab', 'Sib': 'Bb'
+  'Do':'C','Re':'D','Mi':'E','Fa':'F','Sol':'G','La':'A','Si':'B',
+  'Do#':'C#','Re#':'D#','Mi#':'E#','Fa#':'F#','Sol#':'G#','La#':'A#','Si#':'B#',
+  'Dob':'Cb','Reb':'Db','Mib':'Eb','Fab':'Fb','Solb':'Gb','Lab':'Ab','Sib':'Bb'
 };
+
+// ── NUEVO: detección automática de notación ──────────────────────────────
+
+/**
+ * Devuelve true si el texto contiene acordes en notación española (Do-Re-Mi).
+ * Reutiliza la misma expresión regular que convertChordNotation usa para sustituir.
+ */
+function detectSpanishNotation(text) {
+  return /\b(Do|Re|Mi|Fa|Sol|La|Si)[#b]?(?:m|maj|min|dim|aug|sus|add)?\d*\b/.test(text);
+}
+
+/**
+ * Convierte una tonalidad suelta (p.ej. "Sol" → "G", "Rem" → "Dm").
+ * Reutiliza convertChordNotation con toSpanish=false.
+ */
+function normalizeKey(key) {
+  return convertChordNotation(key + ' ', false).trim();
+}
+
+// ── FIN NUEVO ─────────────────────────────────────────────────────────────
 
 function convertChordNotation(line, toSpanish) {
   if (!line) return line;
-  
   const map = toSpanish ? ENGLISH_TO_SPANISH : SPANISH_TO_ENGLISH;
-  
   if (toSpanish) {
-    // De inglés a español
-    return line.replace(/([A-G][#b]?)(?:m|maj|min|dim|aug|sus|add)?[0-9]*(\s*)/g, 
+    return line.replace(/([A-G][#b]?)(?:m|maj|min|dim|aug|sus|add)?[0-9]*(\s*)/g,
       (match, noteBase, spaces) => {
-        // Separar nota de modificadores
         const noteMatch = match.match(/^([A-G][#b]?)((?:m|maj|min|dim|aug|sus|add)?[0-9]*)/);
         if (!noteMatch) return match;
-        
         const [, note, modifiers] = noteMatch;
         const converted = map[note];
         if (!converted) return match;
-        
         const oldChord = note + modifiers;
         const newChord = converted + modifiers;
         const lengthDiff = newChord.length - oldChord.length;
-        
-        // Ajustar espacios: si el nuevo es más largo, quitamos espacios; si es más corto, añadimos
         const newSpaces = Math.max(0, spaces.length - lengthDiff);
         return newChord + ' '.repeat(newSpaces);
       });
   } else {
-    // De español a inglés
     return line.replace(/(Do|Re|Mi|Fa|Sol|La|Si)([#b]?)(?:m|maj|min|dim|aug|sus|add)?[0-9]*(\s*)/g,
       (match, note, accidental, spaces) => {
-        // Separar nota de modificadores
         const fullMatch = match.match(/^(Do|Re|Mi|Fa|Sol|La|Si)([#b]?)((?:m|maj|min|dim|aug|sus|add)?[0-9]*)/);
         if (!fullMatch) return match;
-        
         const [, noteName, acc, modifiers] = fullMatch;
         const fullNote = noteName + acc;
         const converted = map[fullNote];
         if (!converted) return match;
-        
         const oldChord = fullNote + modifiers;
         const newChord = converted + modifiers;
         const lengthDiff = newChord.length - oldChord.length;
-        
-        // Ajustar espacios: si el nuevo es más largo, quitamos espacios; si es más corto, añadimos
         const newSpaces = Math.max(0, spaces.length - lengthDiff);
         return newChord + ' '.repeat(newSpaces);
       });
@@ -287,29 +158,24 @@ function convertChordNotation(line, toSpanish) {
 
 function convertTextNotation(text, toSpanish) {
   return text.split('\n').map(line => {
-    // Detectar si es una línea de acordes (sin letras minúsculas excepto en modificadores)
     const isChordLine = !/[a-záéíóúüñ]/i.test(
       line.replace(/[A-G][#b]?(?:m|maj|min|dim|aug|sus|add)?[0-9]*/g, '')
-        .replace(/(?:Do|Re|Mi|Fa|Sol|La|Si)[#b]?(?:m|maj|min|dim|aug|sus|add)?[0-9]*/g, '')
+          .replace(/(?:Do|Re|Mi|Fa|Sol|La|Si)[#b]?(?:m|maj|min|dim|aug|sus|add)?[0-9]*/g, '')
     );
-    
-    if (isChordLine) {
-      return convertChordNotation(line, toSpanish);
-    }
+    if (isChordLine) return convertChordNotation(line, toSpanish);
     return line;
   }).join('\n');
 }
 
 function toggleNotation() {
   useSpanishNotation = !useSpanishNotation;
-  document.getElementById('notation-toggle').textContent = 
+  document.getElementById('notation-toggle').textContent =
     useSpanishNotation ? 'C-D-E' : 'Do-Re-Mi';
   renderSong();
 }
 
 function changeFontSize(delta) {
   fontSize += delta;
-  // Limitar el tamaño entre 10px y 24px
   fontSize = Math.max(10, Math.min(24, fontSize));
   renderSong();
 }
@@ -347,17 +213,26 @@ async function loadFromSheet() {
     const text = await resp.text();
     const rows = parseCSV(text);
 
-    // Fila 0 = cabeceras (Code, Título, Key, Sección, Letra y acordes) → saltar
-    // Columnas: A=0 code, B=1 title, C=2 key, D=3 section, E=4 chordpro
     SONGS = rows.slice(1)
       .filter(r => r[0] && r[0].trim())
-      .map(r => ({
-        code:     r[0].trim(),
-        title:    r[1].trim(),
-        key:      r[2].trim(),
-        section:  r[3].trim(),
-        chordpro: r[4].trim(),
-      }));
+      .map(r => {
+        const rawChords = r[4] ? r[4].trim() : '';
+        const rawKey    = r[2] ? r[2].trim() : '';
+
+        // ── NUEVO: normalizar a notación inglesa si el sheet usa Do-Re-Mi ──
+        const isSpanish = detectSpanishNotation(rawChords) || detectSpanishNotation(rawKey);
+        const chordpro  = isSpanish ? convertTextNotation(rawChords, false) : rawChords;
+        const key       = isSpanish ? normalizeKey(rawKey)                  : rawKey;
+        // ─────────────────────────────────────────────────────────────────
+
+        return {
+          code:    r[0].trim(),
+          title:   r[1].trim(),
+          key,
+          section: r[3].trim(),
+          chordpro,
+        };
+      });
 
     renderThemeFilter();
     renderList();
@@ -374,7 +249,6 @@ function renderThemeFilter() {
   const div   = document.getElementById('theme-filter');
   const inUse = new Set(SONGS.map(s => s.section));
   const visible = THEMES.filter(t => inUse.has(t));
-
   div.innerHTML = ['Todas', ...visible].map(t => {
     const isActive = (t === 'Todas' && activeTheme === null) || t === activeTheme;
     const onclick  = t === 'Todas' ? 'setTheme(null)' : `setTheme('${t}')`;
@@ -390,7 +264,6 @@ function setTheme(theme) {
 
 function renderList() {
   const q = document.getElementById('search').value.toLowerCase().trim();
-
   const filtered = SONGS
     .map((s, i) => ({ ...s, index: i }))
     .filter(s => {
@@ -402,13 +275,11 @@ function renderList() {
     });
 
   const ul = document.getElementById('song-list');
-
   if (!filtered.length) {
     ul.innerHTML = '<li style="border:none;cursor:default;color:#aaa;padding:12px 4px">No se encontraron canciones.</li>';
     return;
   }
 
-  // Agrupar por sección manteniendo el orden de THEMES
   const groups = {};
   for (const s of filtered) {
     if (!groups[s.section]) groups[s.section] = [];
@@ -418,13 +289,11 @@ function renderList() {
 
   let html = '';
   for (const theme of orderedThemes) {
-    if (orderedThemes.length > 1) {
+    if (orderedThemes.length > 1)
       html += `<div class="theme-group-title">${theme}</div>`;
-    }
     for (const s of groups[theme]) {
-      const codeTag = `<span class="song-code">${s.code}</span>`;
       html += `<li class="${s.index === currentIndex ? 'active' : ''}" onclick="loadSong(${s.index})">
-        ${codeTag}${s.title}
+        <span class="song-code">${s.code}</span>${s.title}
       </li>`;
     }
   }
@@ -443,18 +312,10 @@ function loadSong(index) {
 
 function renderSong() {
   const s = SONGS[currentIndex];
-
   document.getElementById('viewer-title').textContent = `${s.code} · ${s.title}`;
 
-  // Tonalidad: leída de la columna C (s.key), transpuesta si hace falta
-  let currentKey = transposeSteps === 0
-    ? s.key
-    : transposeChord(s.key, transposeSteps);
-  
-  // Convertir la tonalidad si está en notación española
-  if (useSpanishNotation) {
-    currentKey = convertChordNotation(currentKey, true);
-  }
+  let currentKey = transposeSteps === 0 ? s.key : transposeChord(s.key, transposeSteps);
+  if (useSpanishNotation) currentKey = convertChordNotation(currentKey, true);
 
   document.getElementById('viewer-meta').textContent =
     `${s.section}  ·  Tonalidad: ${currentKey}` +
@@ -463,31 +324,19 @@ function renderSong() {
   document.getElementById('tone-label').textContent =
     transposeSteps === 0 ? '' : (transposeSteps > 0 ? `+${transposeSteps}` : `${transposeSteps}`);
 
-  // Render de la letra con acordes coloreados
   let text = formatter.format(song);
-  
-  // Convertir a notación española si está activada
-  if (useSpanishNotation) {
-    text = convertTextNotation(text, true);
-  }
-  
+  if (useSpanishNotation) text = convertTextNotation(text, true);
+
   const bodyLines = text.split('\n').filter(l =>
     !l.startsWith('title: ') && !l.startsWith('key: ') && !l.startsWith('capo: ')
   );
 
   const coloredLines = bodyLines.map(line => {
     if (!line.trim()) return line;
-    
-    // Remover todos los acordes (ingleses y españoles) de la línea
     let testLine = line;
-    // Remover acordes ingleses
     testLine = testLine.replace(/\b[A-G][#b]?(?:m|maj|min|dim|aug|sus|add)?\d*\b/g, '');
-    // Remover acordes españoles
     testLine = testLine.replace(/\b(?:Do|Re|Mi|Fa|Sol|La|Si)[#b]?(?:m|maj|min|dim|aug|sus|add)?\d*\b/g, '');
-    
-    // Si después de remover acordes no quedan letras minúsculas (español) ni vocales comunes, es línea de acordes
     const isChordLine = !/[a-záéíóúüñ]/i.test(testLine);
-    
     return isChordLine ? `<span class="chord-line">${line}</span>` : line;
   });
 
@@ -496,10 +345,9 @@ function renderSong() {
   preElement.querySelector('pre').style.fontSize = fontSize + 'px';
 }
 
-// Transponer la tonalidad para mostrarla en la meta-info
 function transposeChord(key, steps) {
-  const CHROMATIC  = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-  const ENHARMONIC = { Db: 'C#', Eb: 'D#', Gb: 'F#', Ab: 'G#', Bb: 'A#' };
+  const CHROMATIC  = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+  const ENHARMONIC = { Db:'C#', Eb:'D#', Gb:'F#', Ab:'G#', Bb:'A#' };
   const root = ENHARMONIC[key] || key;
   const idx  = CHROMATIC.indexOf(root);
   if (idx === -1) return key;
@@ -517,5 +365,4 @@ loadFromSheet();
 </script>
 
 </body>
-</html>
 </html>
