@@ -6,7 +6,6 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🎵</text></svg>">
   <script src="bundle.js"></script>
   <style>
-    /* … (sin cambios, igual que antes) … */
     body { font-family: Arial; max-width: 860px; margin: auto; padding: 20px; }
     h1.main-title { font-size: 26px; margin-bottom: 16px; }
     #search { width:100%; padding:10px; font-size:16px; margin-bottom:10px; box-sizing:border-box; border:1px solid #ccc; border-radius:6px; }
@@ -66,13 +65,8 @@
 const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSrDH4DpWxwKH0tlNvUvtPclKxPLOjpzat8T_gjtNR6gS2talVoCf98s9G_bdP6YqlmjwLFCTkKM98Y/pub?gid=450216955&single=true&output=csv';
 
 const THEMES = [
-  "General",
-  "Eucaristía",
-  "María",
-  "Adviento-Navidad",
-  "Cuaresma-Pascua",
-  "SaFa",
-  "Aclamaciones",
+  "General", "Eucaristía", "María",
+  "Adviento-Navidad", "Cuaresma-Pascua", "SaFa", "Aclamaciones",
 ];
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -87,7 +81,7 @@ let activeTheme    = null;
 let useSpanishNotation = false;
 let fontSize       = 15;
 
-// ── NOTACIÓN ESPAÑOLA ────────────────────────────────────────────────────
+// ── TABLAS DE CONVERSIÓN ─────────────────────────────────────────────────
 
 const ENGLISH_TO_SPANISH = {
   'C':'Do','D':'Re','E':'Mi','F':'Fa','G':'Sol','A':'La','B':'Si',
@@ -101,25 +95,52 @@ const SPANISH_TO_ENGLISH = {
   'Dob':'Cb','Reb':'Db','Mib':'Eb','Fab':'Fb','Solb':'Gb','Lab':'Ab','Sib':'Bb'
 };
 
-// ── NUEVO: detección automática de notación ──────────────────────────────
+// ── DETECCIÓN Y NORMALIZACIÓN ────────────────────────────────────────────
 
 /**
- * Devuelve true si el texto contiene acordes en notación española (Do-Re-Mi).
- * Reutiliza la misma expresión regular que convertChordNotation usa para sustituir.
+ * Convierte nombres de nota españoles en MAYÚSCULAS a Title Case
+ * para que el resto del pipeline los procese correctamente.
+ * DO → Do · SOL → Sol · LAM → Lam · RE7 → Re7 · DOM7 → Dom7
+ */
+function normalizeSpanishCase(text) {
+  // Primero los de dos letras (SOL antes que SO, etc.)
+  return text.replace(
+    /\b(DO|RE|MI|FA|SOL|LA|SI)([#B]?)((?:MAJ|MIN|DIM|AUG|SUS|ADD|M)?\d*)\b/g,
+    (_, note, acc, mod) =>
+      note[0] + note.slice(1).toLowerCase() +   // DO→Do, SOL→Sol …
+      (acc === 'B' ? 'b' : acc) +                // B bemol → b minúscula
+      mod.toLowerCase()                          // MAJ→maj, M→m …
+  );
+}
+
+/**
+ * Detecta si el texto usa notación española, tanto en Title Case
+ * (Do, Sol) como en MAYÚSCULAS (DO, SOL).
  */
 function detectSpanishNotation(text) {
-  return /\b(Do|Re|Mi|Fa|Sol|La|Si)[#b]?(?:m|maj|min|dim|aug|sus|add)?\d*\b/.test(text);
+  return /\b(?:Do|Re|Mi|Fa|Sol|La|Si|DO|RE|MI|FA|SOL|LA|SI)[#Bb]?(?:maj|min|dim|aug|sus|add|MAJ|MIN|DIM|AUG|SUS|ADD|m|M)?\d*\b/
+    .test(text);
 }
 
 /**
- * Convierte una tonalidad suelta (p.ej. "Sol" → "G", "Rem" → "Dm").
- * Reutiliza convertChordNotation con toSpanish=false.
+ * Devuelve true SOLO si toda la línea está formada por acordes + espacios.
+ * Evita el falso positivo de palabras como "LA", "MI", "RE" en letras.
+ * Reemplaza la lógica anterior de "eliminar acordes y comprobar lo que queda"
+ * con la lógica inversa más estricta: la línea entera debe ser solo acordes.
  */
-function normalizeKey(key) {
-  return convertChordNotation(key + ' ', false).trim();
+function isChordOnlyLine(line) {
+  const trimmed = line.trim();
+  if (!trimmed) return false;
+  const withoutChords = trimmed
+    // acordes ingleses
+    .replace(/\b[A-G][#b]?(?:maj|min|dim|aug|sus|add|m)?\d*\b/g, '')
+    // acordes españoles (title case, ya normalizados para este punto)
+    .replace(/\b(?:Do|Re|Mi|Fa|Sol|La|Si)[#b]?(?:maj|min|dim|aug|sus|add|m)?\d*\b/g, '');
+  // Si solo quedan espacios, es línea de acordes
+  return withoutChords.trim() === '';
 }
 
-// ── FIN NUEVO ─────────────────────────────────────────────────────────────
+// ── CONVERSIÓN DE NOTACIÓN ────────────────────────────────────────────────
 
 function convertChordNotation(line, toSpanish) {
   if (!line) return line;
@@ -132,11 +153,8 @@ function convertChordNotation(line, toSpanish) {
         const [, note, modifiers] = noteMatch;
         const converted = map[note];
         if (!converted) return match;
-        const oldChord = note + modifiers;
-        const newChord = converted + modifiers;
-        const lengthDiff = newChord.length - oldChord.length;
-        const newSpaces = Math.max(0, spaces.length - lengthDiff);
-        return newChord + ' '.repeat(newSpaces);
+        const lengthDiff = (converted + modifiers).length - (note + modifiers).length;
+        return converted + modifiers + ' '.repeat(Math.max(0, spaces.length - lengthDiff));
       });
   } else {
     return line.replace(/(Do|Re|Mi|Fa|Sol|La|Si)([#b]?)(?:m|maj|min|dim|aug|sus|add)?[0-9]*(\s*)/g,
@@ -147,24 +165,24 @@ function convertChordNotation(line, toSpanish) {
         const fullNote = noteName + acc;
         const converted = map[fullNote];
         if (!converted) return match;
-        const oldChord = fullNote + modifiers;
-        const newChord = converted + modifiers;
-        const lengthDiff = newChord.length - oldChord.length;
-        const newSpaces = Math.max(0, spaces.length - lengthDiff);
-        return newChord + ' '.repeat(newSpaces);
+        const lengthDiff = (converted + modifiers).length - (fullNote + modifiers).length;
+        return converted + modifiers + ' '.repeat(Math.max(0, spaces.length - lengthDiff));
       });
   }
 }
 
+/**
+ * Aplica convertChordNotation línea a línea, usando isChordOnlyLine
+ * para identificar con precisión qué líneas son de acordes.
+ */
 function convertTextNotation(text, toSpanish) {
-  return text.split('\n').map(line => {
-    const isChordLine = !/[a-záéíóúüñ]/i.test(
-      line.replace(/[A-G][#b]?(?:m|maj|min|dim|aug|sus|add)?[0-9]*/g, '')
-          .replace(/(?:Do|Re|Mi|Fa|Sol|La|Si)[#b]?(?:m|maj|min|dim|aug|sus|add)?[0-9]*/g, '')
-    );
-    if (isChordLine) return convertChordNotation(line, toSpanish);
-    return line;
-  }).join('\n');
+  return text.split('\n').map(line =>
+    isChordOnlyLine(line) ? convertChordNotation(line, toSpanish) : line
+  ).join('\n');
+}
+
+function normalizeKey(key) {
+  return convertChordNotation(key + ' ', false).trim();
 }
 
 function toggleNotation() {
@@ -175,12 +193,11 @@ function toggleNotation() {
 }
 
 function changeFontSize(delta) {
-  fontSize += delta;
-  fontSize = Math.max(10, Math.min(24, fontSize));
+  fontSize = Math.max(10, Math.min(24, fontSize + delta));
   renderSong();
 }
 
-// ── CARGA DESDE GOOGLE SHEETS ────────────────────────────────────────────
+// ── CARGA DESDE GOOGLE SHEETS ─────────────────────────────────────────────
 
 function parseCSV(text) {
   const rows = [];
@@ -219,19 +236,18 @@ async function loadFromSheet() {
         const rawChords = r[4] ? r[4].trim() : '';
         const rawKey    = r[2] ? r[2].trim() : '';
 
-        // ── NUEVO: normalizar a notación inglesa si el sheet usa Do-Re-Mi ──
+        // 1. Detectar notación española (title case o MAYÚSCULAS)
         const isSpanish = detectSpanishNotation(rawChords) || detectSpanishNotation(rawKey);
-        const chordpro  = isSpanish ? convertTextNotation(rawChords, false) : rawChords;
-        const key       = isSpanish ? normalizeKey(rawKey)                  : rawKey;
-        // ─────────────────────────────────────────────────────────────────
 
-        return {
-          code:    r[0].trim(),
-          title:   r[1].trim(),
-          key,
-          section: r[3].trim(),
-          chordpro,
-        };
+        // 2. Si es española, normalizar MAYÚSCULAS → Title Case y luego convertir a inglés
+        const chordpro = isSpanish
+          ? convertTextNotation(normalizeSpanishCase(rawChords), false)
+          : rawChords;
+        const key = isSpanish
+          ? normalizeKey(normalizeSpanishCase(rawKey))
+          : rawKey;
+
+        return { code: r[0].trim(), title: r[1].trim(), key, section: r[3].trim(), chordpro };
       });
 
     renderThemeFilter();
@@ -243,7 +259,7 @@ async function loadFromSheet() {
   }
 }
 
-// ── INTERFAZ ─────────────────────────────────────────────────────────────
+// ── INTERFAZ ──────────────────────────────────────────────────────────────
 
 function renderThemeFilter() {
   const div   = document.getElementById('theme-filter');
@@ -320,7 +336,6 @@ function renderSong() {
   document.getElementById('viewer-meta').textContent =
     `${s.section}  ·  Tonalidad: ${currentKey}` +
     (transposeSteps !== 0 ? `  (${transposeSteps > 0 ? '+' : ''}${transposeSteps} semitonos)` : '');
-
   document.getElementById('tone-label').textContent =
     transposeSteps === 0 ? '' : (transposeSteps > 0 ? `+${transposeSteps}` : `${transposeSteps}`);
 
@@ -331,14 +346,12 @@ function renderSong() {
     !l.startsWith('title: ') && !l.startsWith('key: ') && !l.startsWith('capo: ')
   );
 
-  const coloredLines = bodyLines.map(line => {
-    if (!line.trim()) return line;
-    let testLine = line;
-    testLine = testLine.replace(/\b[A-G][#b]?(?:m|maj|min|dim|aug|sus|add)?\d*\b/g, '');
-    testLine = testLine.replace(/\b(?:Do|Re|Mi|Fa|Sol|La|Si)[#b]?(?:m|maj|min|dim|aug|sus|add)?\d*\b/g, '');
-    const isChordLine = !/[a-záéíóúüñ]/i.test(testLine);
-    return isChordLine ? `<span class="chord-line">${line}</span>` : line;
-  });
+  // Usar isChordOnlyLine para colorear con precisión
+  const coloredLines = bodyLines.map(line =>
+    (line.trim() && isChordOnlyLine(line))
+      ? `<span class="chord-line">${line}</span>`
+      : line
+  );
 
   const preElement = document.getElementById('song');
   preElement.innerHTML = '<pre>' + coloredLines.join('\n') + '</pre>';
