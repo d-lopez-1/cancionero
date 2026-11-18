@@ -78,16 +78,63 @@ let currentIndex   = null;
 let transposeSteps = 0;
 let song           = null;
 let activeTheme    = null;
-let useSpanishNotation = false;
-let fontSize       = 15;
+// Preferencias guardadas en el navegador (se recuerdan al recargar)
+function loadPref(name, fallback) {
+  try { const v = localStorage.getItem(name); return v === null ? fallback : JSON.parse(v); }
+  catch (e) { return fallback; }
+}
+function savePref(name, value) {
+  try { localStorage.setItem(name, JSON.stringify(value)); } catch (e) {}
+}
 
-// ── TABLAS DE CONVERSIÓN ─────────────────────────────────────────────────
+let useSpanishNotation = loadPref('cancionero.spanish', false) === true;
+let fontSize       = Math.max(10, Math.min(24, Number(loadPref('cancionero.fontSize', 15)) || 15));
 
-const ENGLISH_TO_SPANISH = {
-  'C':'Do','D':'Re','E':'Mi','F':'Fa','G':'Sol','A':'La','B':'Si',
-  'C#':'Do#','D#':'Re#','E#':'Mi#','F#':'Fa#','G#':'Sol#','A#':'La#','B#':'Si#',
-  'Cb':'Dob','Db':'Reb','Eb':'Mib','Fb':'Fab','Gb':'Solb','Ab':'Lab','Bb':'Sib'
-};
+// ── NOTACIÓN PARA MOSTRAR (inglés → español, por columnas) ────────────────
+
+const NOTAS_ES = { C:'Do', D:'Re', E:'Mi', F:'Fa', G:'Sol', A:'La', B:'Si' };
+const CHORD_RE = /^([A-G])([#b]?)([^\/\s]*)(?:\/([A-G])([#b]?))?$/;
+
+/** ¿Es este trozo de texto un acorde en notación inglesa? (C, Am7, F#m, Bb, C/E, Gsus4...) */
+function isChordToken(tok) {
+  const m = tok.match(CHORD_RE);
+  return !!m && /^(m|maj|min|sus|dim|aug|add|M|\+|º|°|-|\d|\(|\)|b|#)*$/.test(m[3]);
+}
+
+/** Una línea es de acordes si TODAS sus palabras son acordes en inglés. */
+function isChordLine(line) {
+  const toks = line.trim().split(/\s+/).filter(Boolean);
+  return toks.length > 0 && toks.every(isChordToken);
+}
+
+/** Un acorde inglés → español. Am → lam, Bb → Sib, C/E → Do/Mi, Cmaj7 → Domaj7 */
+function chordToSpanish(chord) {
+  const m = chord.match(CHORD_RE);
+  if (!m) return chord;
+  const [, root, acc, suffix, bassRoot, bassAcc] = m;
+  let r = NOTAS_ES[root] + acc;
+  if (/^m(?!aj)/.test(suffix)) r = r.toLowerCase();   // menor: raíz en minúscula
+  return r + suffix + (bassRoot ? '/' + NOTAS_ES[bassRoot] + bassAcc : '');
+}
+
+/**
+ * Convierte una línea de acordes manteniendo cada acorde en su columna original.
+ * Si el acorde anterior (ya convertido) no deja sitio, se separa con un solo espacio.
+ */
+function convertChordLine(line) {
+  const re = /\S+/g;
+  let out = '', m;
+  while ((m = re.exec(line)) !== null) {
+    const col  = m.index;
+    const conv = chordToSpanish(m[0]);
+    if (out.length === 0 && col === 0) out = conv;
+    else if (out.length >= col)        out += ' ' + conv;
+    else                               out = out.padEnd(col, ' ') + conv;
+  }
+  return out;
+}
+
+// ── TABLA PARA LEER DATOS EN ESPAÑOL (al cargar el Sheet) ─────────────────
 
 const SPANISH_TO_ENGLISH = {
   'Do':'C','Re':'D','Mi':'E','Fa':'F','Sol':'G','La':'A','Si':'B',
@@ -142,21 +189,11 @@ function isChordOnlyLine(line) {
 
 // ── CONVERSIÓN DE NOTACIÓN ────────────────────────────────────────────────
 
+// Solo se usa al cargar, para pasar a inglés canciones escritas en español
 function convertChordNotation(line, toSpanish) {
   if (!line) return line;
-  const map = toSpanish ? ENGLISH_TO_SPANISH : SPANISH_TO_ENGLISH;
-  if (toSpanish) {
-    return line.replace(/([A-G][#b]?)(?:m|maj|min|dim|aug|sus|add)?[0-9]*(\s*)/g,
-      (match, noteBase, spaces) => {
-        const noteMatch = match.match(/^([A-G][#b]?)((?:m|maj|min|dim|aug|sus|add)?[0-9]*)/);
-        if (!noteMatch) return match;
-        const [, note, modifiers] = noteMatch;
-        const converted = map[note];
-        if (!converted) return match;
-        const lengthDiff = (converted + modifiers).length - (note + modifiers).length;
-        return converted + modifiers + ' '.repeat(Math.max(0, spaces.length - lengthDiff));
-      });
-  } else {
+  const map = SPANISH_TO_ENGLISH;
+  {
     return line.replace(/(Do|Re|Mi|Fa|Sol|La|Si)([#b]?)(?:m|maj|min|dim|aug|sus|add)?[0-9]*(\s*)/g,
       (match, note, accidental, spaces) => {
         const fullMatch = match.match(/^(Do|Re|Mi|Fa|Sol|La|Si)([#b]?)((?:m|maj|min|dim|aug|sus|add)?[0-9]*)/);
@@ -187,14 +224,20 @@ function normalizeKey(key) {
 
 function toggleNotation() {
   useSpanishNotation = !useSpanishNotation;
+  savePref('cancionero.spanish', useSpanishNotation);
+  updateNotationButton();
+  if (currentIndex !== null) renderSong();
+}
+
+function updateNotationButton() {
   document.getElementById('notation-toggle').textContent =
     useSpanishNotation ? 'C-D-E' : 'Do-Re-Mi';
-  renderSong();
 }
 
 function changeFontSize(delta) {
   fontSize = Math.max(10, Math.min(24, fontSize + delta));
-  renderSong();
+  savePref('cancionero.fontSize', fontSize);
+  if (currentIndex !== null) renderSong();
 }
 
 // ── CARGA DESDE GOOGLE SHEETS ─────────────────────────────────────────────
@@ -331,7 +374,7 @@ function renderSong() {
   document.getElementById('viewer-title').textContent = `${s.code} · ${s.title}`;
 
   let currentKey = transposeSteps === 0 ? s.key : transposeChord(s.key, transposeSteps);
-  if (useSpanishNotation) currentKey = convertChordNotation(currentKey, true);
+  if (useSpanishNotation) currentKey = chordToSpanish(currentKey);
 
   document.getElementById('viewer-meta').textContent =
     `${s.section}  ·  Tonalidad: ${currentKey}` +
@@ -339,17 +382,16 @@ function renderSong() {
   document.getElementById('tone-label').textContent =
     transposeSteps === 0 ? '' : (transposeSteps > 0 ? `+${transposeSteps}` : `${transposeSteps}`);
 
-  let text = formatter.format(song);
-  if (useSpanishNotation) text = convertTextNotation(text, true);
+  const text = formatter.format(song);   // siempre en inglés
 
   const bodyLines = text.split('\n').filter(l =>
     !l.startsWith('title: ') && !l.startsWith('key: ') && !l.startsWith('capo: ')
   );
 
-  // Usar isChordOnlyLine para colorear con precisión
+  // Un solo paso: detectar línea de acordes (en inglés), convertir si toca y colorear
   const coloredLines = bodyLines.map(line =>
-    (line.trim() && isChordOnlyLine(line))
-      ? `<span class="chord-line">${line}</span>`
+    isChordLine(line)
+      ? `<span class="chord-line">${useSpanishNotation ? convertChordLine(line) : line}</span>`
       : line
   );
 
@@ -374,6 +416,7 @@ function transpose(steps) {
 }
 
 // ── INICIO ────────────────────────────────────────────────────────────────
+updateNotationButton();
 loadFromSheet();
 </script>
 
