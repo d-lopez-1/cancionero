@@ -2,6 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cancionero</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🎵</text></svg>">
   <script src="bundle.js"></script>
@@ -31,13 +32,55 @@
     #notation-toggle { margin-left:auto; font-size:14px; padding:6px 12px; }
     .font-size-controls { display:flex; gap:6px; align-items:center; }
     .font-size-controls button { font-size:14px; padding:6px 10px; }
-    #song pre { font-family:'Courier New',monospace; line-height:1.7; white-space:pre-wrap; }
+    #song pre { font-family:'Courier New',monospace; line-height:1.7; white-space:pre; overflow-x:auto; }
     #song .chord-line { color:#1a7a4a; font-weight:bold; }
+
+    /* ── BOTÓN MODO NOCHE ── */
+    #dark-toggle { float:right; font-size:18px; padding:4px 10px; border:1px solid #ccc; border-radius:6px; background:#fff; cursor:pointer; }
+
+    /* ── MODO NOCHE ── */
+    body.dark { background:#121212; color:#e4e4e4; color-scheme:dark; }
+    body.dark #search { background:#1e1e1e; color:#e4e4e4; border-color:#3a3a3a; }
+    body.dark #theme-filter button,
+    body.dark .transpose-controls button,
+    body.dark #dark-toggle { background:#1e1e1e; color:#e4e4e4; border-color:#3a3a3a; }
+    body.dark #theme-filter button:hover,
+    body.dark .transpose-controls button:hover { background:#2a2a2a; }
+    body.dark #theme-filter button.active { background:#1a7a4a; color:#fff; border-color:#1a7a4a; }
+    body.dark #song-list li { border-color:#333; }
+    body.dark #song-list li:hover { background:#1e1e1e; }
+    body.dark #song-list li.active { background:#16301f; border-color:#2fae6a; }
+    body.dark .song-code, body.dark .theme-group-title, body.dark #song-viewer .song-meta { color:#8a8a8a; }
+    body.dark li.active .song-code { color:#4cc38a; }
+    body.dark .controls-divider { background:#3a3a3a; }
+    body.dark #song .chord-line { color:#4cc38a; }
+
+    /* ── MÓVIL ── */
+    @media (max-width: 600px) {
+      body { padding: 12px; }
+      h1.main-title { font-size: 21px; margin-bottom: 12px; }
+      #song-list li { padding: 11px 12px; }
+      #song-viewer h2 { font-size: 19px; }
+      .transpose-controls button { font-size: 14px; padding: 8px 10px; }
+      .controls-divider { display: none; }
+      #notation-toggle { margin-left: 0; }
+    }
   </style>
 </head>
 <body>
+<script>
+  // Se aplica antes de pintar la página, para que no haya un destello blanco al abrirla de noche
+  (function () {
+    let dark;
+    try { const v = localStorage.getItem('cancionero.dark'); if (v !== null) dark = JSON.parse(v); } catch (e) {}
+    if (dark === undefined) dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (dark) document.body.classList.add('dark');
+  })();
+</script>
 
-<h1 class="main-title">🎵 Cancionero Pastoral</h1>
+<h1 class="main-title">🎵 Cancionero Pastoral
+  <button id="dark-toggle" onclick="toggleDark()" title="Modo noche" aria-label="Cambiar modo claro/noche"></button>
+</h1>
 
 <input type="text" id="search" placeholder="Buscar por título, código o letra..." oninput="renderList()" />
 <div id="theme-filter"></div>
@@ -47,8 +90,8 @@
   <h2 id="viewer-title"></h2>
   <p class="song-meta" id="viewer-meta"></p>
   <div class="transpose-controls">
-    <button onclick="transpose(-1)">⬇️ Bajar tono</button>
-    <button onclick="transpose(1)">⬆️ Subir tono</button>
+    <button onclick="transpose(-1)" title="Bajar tono" aria-label="Bajar tono">⬇️</button>
+    <button onclick="transpose(1)" title="Subir tono" aria-label="Subir tono">⬆️</button>
     <span class="tone-label" id="tone-label"></span>
     <div class="controls-divider"></div>
     <div class="font-size-controls">
@@ -88,7 +131,8 @@ function savePref(name, value) {
 }
 
 let useSpanishNotation = loadPref('cancionero.spanish', false) === true;
-let fontSize       = Math.max(10, Math.min(24, Number(loadPref('cancionero.fontSize', 15)) || 15));
+const DEFAULT_FONT = window.innerWidth <= 600 ? 13 : 15;   // en móvil, algo más pequeña
+let fontSize       = Math.max(10, Math.min(24, Number(loadPref('cancionero.fontSize', DEFAULT_FONT)) || DEFAULT_FONT));
 
 // ── NOTACIÓN PARA MOSTRAR (inglés → español, por columnas) ────────────────
 
@@ -234,6 +278,17 @@ function updateNotationButton() {
     useSpanishNotation ? 'C-D-E' : 'Do-Re-Mi';
 }
 
+function toggleDark() {
+  const dark = document.body.classList.toggle('dark');
+  savePref('cancionero.dark', dark);
+  updateDarkButton();
+}
+
+function updateDarkButton() {
+  document.getElementById('dark-toggle').textContent =
+    document.body.classList.contains('dark') ? '☀️' : '🌙';
+}
+
 function changeFontSize(delta) {
   fontSize = Math.max(10, Math.min(24, fontSize + delta));
   savePref('cancionero.fontSize', fontSize);
@@ -376,11 +431,11 @@ function renderSong() {
   let currentKey = transposeSteps === 0 ? s.key : transposeChord(s.key, transposeSteps);
   if (useSpanishNotation) currentKey = chordToSpanish(currentKey);
 
+  const toneText = formatTones(transposeSteps);
   document.getElementById('viewer-meta').textContent =
     `${s.section}  ·  Tonalidad: ${currentKey}` +
-    (transposeSteps !== 0 ? `  (${transposeSteps > 0 ? '+' : ''}${transposeSteps} semitonos)` : '');
-  document.getElementById('tone-label').textContent =
-    transposeSteps === 0 ? '' : (transposeSteps > 0 ? `+${transposeSteps}` : `${transposeSteps}`);
+    (toneText ? `  (${toneText})` : '');
+  document.getElementById('tone-label').textContent = toneText;
 
   const text = formatter.format(song);   // siempre en inglés
 
@@ -400,23 +455,38 @@ function renderSong() {
   preElement.querySelector('pre').style.fontSize = fontSize + 'px';
 }
 
+// Transpone la tonalidad conservando el sufijo (Am → A#m, F#m → Gm, C → D)
 function transposeChord(key, steps) {
   const CHROMATIC  = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
   const ENHARMONIC = { Db:'C#', Eb:'D#', Gb:'F#', Ab:'G#', Bb:'A#' };
-  const root = ENHARMONIC[key] || key;
+  const m = String(key).match(/^([A-G][#b]?)(.*)$/);
+  if (!m) return key;
+  const root = ENHARMONIC[m[1]] || m[1];
   const idx  = CHROMATIC.indexOf(root);
   if (idx === -1) return key;
-  return CHROMATIC[((idx + steps) % 12 + 12) % 12];
+  return CHROMATIC[((idx + steps) % 12 + 12) % 12] + m[2];
+}
+
+// Semitonos → texto en tonos: 1 → "+0,5 tono", 2 → "+1 tono", 3 → "+1,5 tonos", -4 → "-2 tonos"
+function formatTones(semitones) {
+  if (!semitones) return '';
+  const abs  = Math.abs(semitones);
+  const sign = semitones > 0 ? '+' : '-';
+  return `${sign}${String(abs / 2).replace('.', ',')} ${abs > 2 ? 'tonos' : 'tono'}`;
 }
 
 function transpose(steps) {
-  transposeSteps += steps;
-  song = song.transpose(steps);
+  // 12 semitonos = una octava = mismo tono: el contador vuelve a 0 al llegar a ±12
+  transposeSteps = ((transposeSteps + steps) % 12) || 0;
+  // Se parte siempre de la canción original, así al volver a 0 queda exactamente igual que en el Sheet
+  song = parser.parse(SONGS[currentIndex].chordpro);
+  if (transposeSteps !== 0) song = song.transpose(transposeSteps);
   renderSong();
 }
 
 // ── INICIO ────────────────────────────────────────────────────────────────
 updateNotationButton();
+updateDarkButton();
 loadFromSheet();
 </script>
 
