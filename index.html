@@ -331,15 +331,22 @@ async function loadFromSheet() {
     SONGS = rows.slice(1)
       .filter(r => r[0] && r[0].trim())
       .map(r => {
-        const rawChords = r[4] ? r[4].trim() : '';
+        // Se quitan líneas vacías al principio y espacios al final, pero NO la sangría
+        // de la primera línea (si no, el primer acorde se descoloca)
+        const rawChords = r[4] ? r[4].replace(/^\s*\n/, '').trimEnd() : '';
         const rawKey    = r[2] ? r[2].trim() : '';
 
         // 1. Detectar notación española (title case o MAYÚSCULAS)
         const isSpanish = detectSpanishNotation(rawChords) || detectSpanishNotation(rawKey);
 
-        // 2. Si es española, normalizar MAYÚSCULAS → Title Case y luego convertir a inglés
+        // 2. Si es española, normalizar MAYÚSCULAS → Title Case y convertir a inglés,
+        //    pero SOLO en las líneas de acordes: la letra se deja tal cual
+        //    (antes "LLENA DE SOL" se veía "LLENA DE Sol")
         const chordpro = isSpanish
-          ? convertTextNotation(normalizeSpanishCase(rawChords), false)
+          ? rawChords.split('\n').map(line => {
+              const norm = normalizeSpanishCase(line);
+              return isChordOnlyLine(norm) ? convertChordNotation(norm, false) : line;
+            }).join('\n')
           : rawChords;
         const key = isSpanish
           ? normalizeKey(normalizeSpanishCase(rawKey))
