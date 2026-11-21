@@ -38,12 +38,16 @@
     /* ── BOTÓN MODO NOCHE ── */
     #dark-toggle { float:right; font-size:18px; padding:4px 10px; border:1px solid #ccc; border-radius:6px; background:#fff; cursor:pointer; }
 
+    /* ── BOTÓN PROPONER (formulario de Google), a la izquierda del de modo noche ── */
+    #suggest-btn { float:right; margin-right:6px; font-size:18px; padding:4px 10px; border:1px solid #ccc; border-radius:6px; background:#fff; cursor:pointer; text-decoration:none; }
+
     /* ── MODO NOCHE ── */
     body.dark { background:#121212; color:#e4e4e4; color-scheme:dark; }
     body.dark #search { background:#1e1e1e; color:#e4e4e4; border-color:#3a3a3a; }
     body.dark #theme-filter button,
     body.dark .transpose-controls button,
-    body.dark #dark-toggle { background:#1e1e1e; color:#e4e4e4; border-color:#3a3a3a; }
+    body.dark #dark-toggle,
+    body.dark #suggest-btn { background:#1e1e1e; color:#e4e4e4; border-color:#3a3a3a; }
     body.dark #theme-filter button:hover,
     body.dark .transpose-controls button:hover { background:#2a2a2a; }
     body.dark #theme-filter button.active { background:#1a7a4a; color:#fff; border-color:#1a7a4a; }
@@ -80,6 +84,7 @@
 
 <h1 class="main-title">🎵 Cancionero Pastoral
   <button id="dark-toggle" onclick="toggleDark()" title="Modo noche" aria-label="Cambiar modo claro/noche"></button>
+  <a id="suggest-btn" href="https://forms.gle/1nq47R5Nv6jpKeZj8" target="_blank" rel="noopener" title="Proponer canción, corrección o sugerencia" aria-label="Proponer canción, corrección o sugerencia">➕</a>
 </h1>
 
 <input type="text" id="search" placeholder="Buscar por título, código o letra..." oninput="renderList()" />
