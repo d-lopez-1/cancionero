@@ -41,7 +41,15 @@
     /* ── BOTÓN PROPONER (formulario de Google), a la izquierda del de modo noche ── */
     #suggest-btn { float:right; margin-right:6px; font-size:18px; padding:4px 10px; border:1px solid #ccc; border-radius:6px; background:#fff; cursor:pointer; text-decoration:none; }
 
+    /* ── BOTÓN FLOTANTE 🔍 (volver arriba, a la búsqueda) ── */
+    #top-btn { position:fixed; right:16px; bottom:calc(16px + env(safe-area-inset-bottom, 0px)); width:50px; height:50px;
+               border-radius:50%; border:1px solid #ccc; background:#fff; font-size:22px; cursor:pointer;
+               box-shadow:0 2px 8px rgba(0,0,0,.25); display:none; align-items:center; justify-content:center; z-index:10; }
+    #top-btn.show { display:flex; }
+    #song-viewer { padding-bottom:80px; }   /* para que el botón no tape el final de la canción */
+
     /* ── MODO NOCHE ── */
+    body.dark #top-btn { background:#1e1e1e; border-color:#3a3a3a; box-shadow:0 2px 8px rgba(0,0,0,.6); }
     body.dark { background:#121212; color:#e4e4e4; color-scheme:dark; }
     body.dark #search { background:#1e1e1e; color:#e4e4e4; border-color:#3a3a3a; }
     body.dark #theme-filter button,
@@ -107,6 +115,8 @@
   </div>
   <div id="song"></div>
 </div>
+
+<button id="top-btn" onclick="goToTop()" title="Volver a la búsqueda" aria-label="Volver arriba, a la búsqueda">🔍</button>
 
 <script>
 // ── CONFIGURACIÓN ────────────────────────────────────────────────────────
@@ -496,6 +506,20 @@ function transpose(steps) {
   if (transposeSteps !== 0) song = song.transpose(transposeSteps);
   renderSong();
 }
+
+// ── BOTÓN FLOTANTE 🔍 ─────────────────────────────────────────────────────
+// Aparece cuando el cuadro de búsqueda ya no se ve; al pulsarlo sube arriba (sin abrir el teclado)
+function updateTopButton() {
+  const search = document.getElementById('search');
+  const hidden = window.scrollY > search.offsetTop + search.offsetHeight;
+  document.getElementById('top-btn').classList.toggle('show', hidden);
+}
+
+function goToTop() {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+window.addEventListener('scroll', updateTopButton, { passive: true });
 
 // ── INICIO ────────────────────────────────────────────────────────────────
 updateNotationButton();
