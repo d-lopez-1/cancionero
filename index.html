@@ -405,23 +405,25 @@ function transposeFullChord(chord, steps) {
     (bassRoot ? '/' + transposeChord(bassRoot + bassAcc, steps) : '');
 }
 
-// Etiqueta en color normal; el resto en verde si lleva acordes. Los acordes de FUERA del
-// paréntesis cambian de tono y de notación; lo de DENTRO se queda tal cual.
+// Etiqueta en color normal; el resto en verde si lleva acordes. Los acordes cambian de tono y
+// de notación, también los de dentro del paréntesis ("C (D)" +1 tono → "D (E)": son acordes de
+// otra versión). Lo que no es acorde ("x2", "2º", "bis", "(III)", "vez") se queda tal cual.
 // Cada trozo se queda en su columna (como en convertChordLine).
 function renderSpecialLine(line) {
   const label = introLabel(line);
   const rest  = line.slice(label.length);
   const re = /\S+/g;
-  let out = '', m, depth = 0;
+  let out = '', m;
   while ((m = re.exec(rest)) !== null) {
     const col = m.index;
-    let tok = m[0];
-    const opens = (tok.match(/\(/g) || []).length, closes = (tok.match(/\)/g) || []).length;
-    if (depth === 0 && !opens && !closes && isChordToken(tok)) {
-      tok = transposeFullChord(tok, transposeSteps);
-      if (useSpanishNotation) tok = chordToSpanish(tok);
+    // separa los paréntesis pegados: "(D)" → "(" + "D" + ")", "(2º" → "(" + "2º"
+    const [, open, core, close] = m[0].match(/^(\(*)(.*?)(\)*)$/);
+    let chord = core;
+    if (isChordToken(core)) {
+      chord = transposeFullChord(core, transposeSteps);
+      if (useSpanishNotation) chord = chordToSpanish(chord);
     }
-    depth = Math.max(0, depth + opens - closes);
+    const tok = open + chord + close;
     if (out.length === 0 && col === 0) out = tok;
     else if (out.length >= col)        out += ' ' + tok;
     else                               out = out.padEnd(col, ' ') + tok;
