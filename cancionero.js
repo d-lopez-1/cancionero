@@ -397,18 +397,24 @@ function setTheme(theme) {
   renderList();
 }
 
+// Texto en minúsculas y sin tildes ni diéresis (María → maria, pingüino → pinguino),
+// para que el buscador encuentre la canción se escriba con tilde o sin ella
+function sinTildes(text) {
+  return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
 // Lista agrupada por sección, filtrada por la sección elegida y por el buscador
-// (busca en título, código y letra/acordes)
+// (busca en título, código y letra/acordes, sin tener en cuenta las tildes)
 function renderList() {
-  const q = document.getElementById('search').value.toLowerCase().trim();
+  const q = sinTildes(document.getElementById('search').value.trim());
   const filtered = SONGS
     .map((s, i) => ({ ...s, index: i }))
     .filter(s => {
       if (activeTheme && s.section !== activeTheme) return false;
       if (!q) return true;
-      return s.title.toLowerCase().includes(q)
-          || s.code.toLowerCase().includes(q)
-          || s.chordpro.toLowerCase().includes(q);
+      return sinTildes(s.title).includes(q)
+          || sinTildes(s.code).includes(q)
+          || sinTildes(s.chordpro).includes(q);
     });
 
   if (!filtered.length) {
