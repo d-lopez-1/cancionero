@@ -5,13 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cancionero</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🎵</text></svg>">
-  <!-- Cancionero Pastoral · Versión 0 (22/11/2026)
+  <!-- Cancionero Pastoral · Versión 1 (22/11/2026): botones ⏪ ⏩ y búsqueda sin tildes
        Archivos: index.html (esta página), estilos.css (aspecto), cancionero.js (funcionamiento),
        bundle.js (librería de acordes ChordSheetJS).
-       El "?v=0" de los enlaces es el número de versión de cada archivo: súbelo (?v=0.1, ?v=0.2...)
+       El "?v=1" de los enlaces es el número de versión de cada archivo: súbelo (?v=1.1, ?v=1.2...)
        cada vez que cambies ese archivo, para que los navegadores no usen la copia vieja. -->
   <script src="bundle.js"></script>
-  <link rel="stylesheet" href="estilos.css?v=0">
+  <link rel="stylesheet" href="estilos.css?v=1">
 </head>
 <body>
 <script>
@@ -34,7 +34,11 @@
 <ul id="song-list"></ul>
 
 <div id="song-viewer">
-  <h2 id="viewer-title"></h2>
+  <div class="viewer-header">
+    <button class="song-nav" id="prev-btn" onclick="goToSong(-1)" title="Canción anterior" aria-label="Canción anterior">⏪</button>
+    <h2 id="viewer-title"></h2>
+    <button class="song-nav" id="next-btn" onclick="goToSong(1)" title="Canción siguiente" aria-label="Canción siguiente">⏩</button>
+  </div>
   <p class="song-meta" id="viewer-meta"></p>
   <div class="transpose-controls">
     <button onclick="transpose(-1)" title="Bajar tono" aria-label="Bajar tono">⬇️</button>
@@ -50,12 +54,16 @@
     <button id="share-btn" onclick="shareSong()" title="Compartir canción" aria-label="Compartir canción">📤</button>
   </div>
   <div id="song"></div>
+  <div class="song-nav-bottom">
+    <button class="song-nav" id="prev-btn-bottom" onclick="goToSong(-1)"></button>
+    <button class="song-nav" id="next-btn-bottom" onclick="goToSong(1)"></button>
+  </div>
 </div>
 
 <button id="top-btn" onclick="goToTop()" title="Volver a la búsqueda" aria-label="Volver arriba, a la búsqueda">🔍</button>
 <div id="toast" role="status"></div>
 
-<script src="cancionero.js?v=0"></script>
+<script src="cancionero.js?v=1"></script>
 
 </body>
 </html>
