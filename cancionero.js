@@ -1,0 +1,654 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   CANCIONERO PASTORAL — funcionamiento
+   Versión 0 · 22/11/2026
+   Si cambias este archivo, sube el número de ?v= en index.html
+
+   ÍNDICE
+    1. Configuración (dirección del Sheet, secciones)
+    2. Estado y preferencias guardadas
+    3. Acordes: reconocerlos
+    4. Notación Do-Re-Mi (inglés → español, al mostrar)
+    5. Cambio de tono
+    6. Líneas especiales: "Intro: C F G" y paréntesis
+    7. Carga de canciones desde el Google Sheet
+    8. Lista de canciones y filtro por sección
+    9. Visor de la canción
+   10. Botones: Do-Re-Mi, solo letra, modo noche, tamaño de letra
+   11. Enlace directo a una canción y compartir
+   12. Botón flotante 🔍
+   13. Inicio
+   ═══════════════════════════════════════════════════════════════════════ */
+
+
+// ── 1. CONFIGURACIÓN ─────────────────────────────────────────────────────────
+
+// Hoja "Songs" del Google Sheet, publicada como CSV
+const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSrDH4DpWxwKH0tlNvUvtPclKxPLOjpzat8T_gjtNR6gS2talVoCf98s9G_bdP6YqlmjwLFCTkKM98Y/pub?gid=450216955&single=true&output=csv';
+
+// Secciones, en el orden en que salen. Deben coincidir EXACTAMENTE con la columna D del Sheet
+const THEMES = [
+  "General", "Eucaristía", "María",
+  "Adviento-Navidad", "Cuaresma-Pascua", "SaFa", "Aclamaciones",
+  "Hakuna",
+];
+
+
+// ── 2. ESTADO Y PREFERENCIAS GUARDADAS ───────────────────────────────────────
+
+const parser    = new ChordSheetJS.ChordsOverWordsParser();
+const formatter = new ChordSheetJS.ChordsOverWordsFormatter();
+
+let SONGS          = [];     // canciones cargadas: { code, title, key, section, chordpro }
+let currentIndex   = null;   // canción abierta (posición en SONGS) o null
+let transposeSteps = 0;      // semitonos de cambio de tono de la canción abierta (-11 … +11)
+let song           = null;   // canción abierta, ya preparada por la librería
+let activeTheme    = null;   // sección elegida en el filtro (null = Todas)
+
+// Preferencias guardadas en el navegador (se recuerdan al recargar)
+function loadPref(name, fallback) {
+  try { const v = localStorage.getItem(name); return v === null ? fallback : JSON.parse(v); }
+  catch (e) { return fallback; }
+}
+function savePref(name, value) {
+  try { localStorage.setItem(name, JSON.stringify(value)); } catch (e) {}
+}
+
+let useSpanishNotation = loadPref('cancionero.spanish', false) === true;
+let lyricsOnly         = loadPref('cancionero.lyricsOnly', false) === true;
+const DEFAULT_FONT     = window.innerWidth <= 600 ? 13 : 15;   // en móvil, algo más pequeña
+let fontSize           = Math.max(10, Math.min(24, Number(loadPref('cancionero.fontSize', DEFAULT_FONT)) || DEFAULT_FONT));
+
+
+// ── 3. ACORDES: RECONOCERLOS ─────────────────────────────────────────────────
+
+// Acorde en inglés: raíz (A-G), alteración (# o b), sufijo (m, 7, maj7, sus4...) y bajo opcional (/E)
+const CHORD_RE = /^([A-G])([#b]?)([^\/\s]*)(?:\/([A-G])([#b]?))?$/;
+
+/** ¿Es este trozo de texto un acorde en notación inglesa? (C, Am7, F#m, Bb, C/E, Gsus4...) */
+function isChordToken(tok) {
+  const m = tok.match(CHORD_RE);
+  return !!m && /^(m|maj|min|sus|dim|aug|add|M|\+|º|°|-|\d|\(|\)|b|#)*$/.test(m[3]);
+}
+
+/** Una línea es de acordes si TODAS sus palabras son acordes en inglés. */
+function isChordLine(line) {
+  const toks = line.trim().split(/\s+/).filter(Boolean);
+  return toks.length > 0 && toks.every(isChordToken);
+}
+
+
+// ── 4. NOTACIÓN DO-RE-MI (inglés → español, al mostrar) ──────────────────────
+
+const NOTAS_ES = { C:'Do', D:'Re', E:'Mi', F:'Fa', G:'Sol', A:'La', B:'Si' };
+
+/** Un acorde inglés → español. Am → lam, Bb → Sib, C/E → Do/Mi, Cmaj7 → Domaj7 */
+function chordToSpanish(chord) {
+  const m = chord.match(CHORD_RE);
+  if (!m) return chord;
+  const [, root, acc, suffix, bassRoot, bassAcc] = m;
+  let r = NOTAS_ES[root] + acc;
+  if (/^m(?!aj)/.test(suffix)) r = r.toLowerCase();   // menor: raíz en minúscula
+  return r + suffix + (bassRoot ? '/' + NOTAS_ES[bassRoot] + bassAcc : '');
+}
+
+/**
+ * Convierte una línea de acordes manteniendo cada acorde en su columna original.
+ * Si el acorde anterior (ya convertido) no deja sitio, se separa con un solo espacio.
+ */
+function convertChordLine(line) {
+  const re = /\S+/g;
+  let out = '', m;
+  while ((m = re.exec(line)) !== null) {
+    const col  = m.index;
+    const conv = chordToSpanish(m[0]);
+    if (out.length === 0 && col === 0) out = conv;
+    else if (out.length >= col)        out += ' ' + conv;
+    else                               out = out.padEnd(col, ' ') + conv;
+  }
+  return out;
+}
+
+
+// ── 5. CAMBIO DE TONO ────────────────────────────────────────────────────────
+// Los acordes de las líneas normales los cambia la librería (song.transpose).
+// Estas funciones sirven para la tonalidad de arriba y para las líneas especiales (apartado 6).
+
+// Transpone la tonalidad conservando el sufijo (Am → A#m, F#m → Gm, C → D). Usa siempre sostenidos.
+function transposeChord(key, steps) {
+  const CHROMATIC  = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+  const ENHARMONIC = { Db:'C#', Eb:'D#', Gb:'F#', Ab:'G#', Bb:'A#' };
+  const m = String(key).match(/^([A-G][#b]?)(.*)$/);
+  if (!m) return key;
+  const root = ENHARMONIC[m[1]] || m[1];
+  const idx  = CHROMATIC.indexOf(root);
+  if (idx === -1) return key;
+  return CHROMATIC[((idx + steps) % 12 + 12) % 12] + m[2];
+}
+
+// Un acorde completo cambiado de tono, también el bajo (C/E +2 → D/F#)
+function transposeFullChord(chord, steps) {
+  const m = chord.match(CHORD_RE);
+  if (!m || !steps) return chord;
+  const [, root, acc, suffix, bassRoot, bassAcc] = m;
+  return transposeChord(root + acc, steps) + suffix +
+    (bassRoot ? '/' + transposeChord(bassRoot + bassAcc, steps) : '');
+}
+
+// Semitonos → texto en tonos: 1 → "+0,5 tono", 2 → "+1 tono", 3 → "+1,5 tonos", -4 → "-2 tonos"
+function formatTones(semitones) {
+  if (!semitones) return '';
+  const abs  = Math.abs(semitones);
+  const sign = semitones > 0 ? '+' : '-';
+  return `${sign}${String(abs / 2).replace('.', ',')} ${abs > 2 ? 'tonos' : 'tono'}`;
+}
+
+
+// ── 6. LÍNEAS ESPECIALES: "Intro: C F G" Y PARÉNTESIS ────────────────────────
+// La librería no las reconoce bien: las "Intro:" del principio las hace desaparecer o las trata
+// como letra, y cambia "(III)" por "(#IV)". Por eso la web las aparta antes de dárselas a la
+// librería (dejando una marca en su sitio) y luego las pinta ella misma.
+// Los paréntesis son indicaciones (repeticiones, otras versiones): los ACORDES de dentro cambian
+// de tono y de notación; lo demás ("x2", "2º", "bis", "(III)", "vez") se queda tal cual.
+
+// Etiquetas que pueden ir delante de una línea de acordes ("Intro: C F G")
+// (las palabras largas primero, y sin letras pegadas detrás: "Introducción" no es "Intro" + "ducción")
+const INTRO_LABEL_RE = /^(\s*(?:introducci[oó]n|instrumental|interludio|intro|int|m[uú]sica|mus|final|outro)(?![a-záéíóúüñ])\s*:?\s*)/i;
+
+const PAREN_GROUP_RE = /\([^()]*\)/g;
+// Lo que puede ir dentro de un paréntesis en una línea sin acordes fuera: "(x2)", "(bis)", "(III)", "(2º)"...
+const ANNOTATION_RE  = /^(x\s*\d+|\d+\s*x|bis|[IVX]+\.?|\d+[ºª]?\.?)$/i;
+
+function parenParts(line) {
+  const inside  = (line.match(PAREN_GROUP_RE) || []).join(' ').replace(/[()]/g, ' ');
+  const outside = line.replace(PAREN_GROUP_RE, ' ');
+  return {
+    outTokens: outside.trim().split(/\s+/).filter(Boolean),
+    inTokens:  inside.trim().split(/\s+/).filter(Boolean),
+    balanced:  !/[()]/.test(outside),
+  };
+}
+
+// ¿Línea de acordes con paréntesis? Fuera del paréntesis, solo acordes.
+// Si fuera no hay nada ("(A)", "(x2)", "(III)"), dentro solo acordes o indicaciones.
+function isParenChordLine(line) {
+  if (!line.includes('(')) return false;
+  const { outTokens, inTokens, balanced } = parenParts(line);
+  if (!balanced || !outTokens.every(isChordToken)) return false;
+  if (outTokens.length) return true;
+  return inTokens.length > 0 && inTokens.every(t => isChordToken(t) || ANNOTATION_RE.test(t));
+}
+
+// ¿Lleva algún acorde (dentro o fuera del paréntesis)? → se pinta en verde y se quita en "solo letra"
+function hasChords(line) {
+  const { outTokens, inTokens } = parenParts(line);
+  return outTokens.some(isChordToken) || inTokens.some(isChordToken);
+}
+
+// Etiqueta "Intro:" (o similar) seguida de algo, o '' si no la hay
+function introLabel(line) {
+  const m = line.match(INTRO_LABEL_RE);
+  return m && /\S/.test(line.slice(m[1].length)) ? m[1] : '';
+}
+
+// Líneas que pinta la web por su cuenta: "Intro: C F G" y líneas de acordes con paréntesis
+function isSpecialLine(line) {
+  const label = introLabel(line);
+  const rest  = line.slice(label.length);
+  return (label && isChordLine(rest)) || isParenChordLine(rest);
+}
+
+// Para "solo letra": cualquier línea de acordes (normal, con "Intro:" o con paréntesis)
+function isChordishLine(line) {
+  if (isChordLine(line)) return true;
+  return isSpecialLine(line) && hasChords(line.slice(introLabel(line).length));
+}
+
+let currentIntros = [];                       // líneas especiales apartadas de la canción abierta
+const introMark = i => `⟦intro${i}⟧`;         // marca que ocupa su sitio mientras tanto
+
+// Prepara la canción: aparta las líneas especiales, deja la marca y se la da a la librería
+function parseSong(text) {
+  currentIntros = [];
+  const marked = text.split('\n').map(line => {
+    if (!isSpecialLine(line)) return line;
+    currentIntros.push(line);
+    return introMark(currentIntros.length - 1);
+  }).join('\n');
+  return parser.parse(marked);
+}
+
+// Pinta una línea especial: etiqueta en color normal, el resto en verde si lleva acordes.
+// Los acordes cambian de tono y de notación, también los de dentro del paréntesis ("C (D)" +1 tono
+// → "D (E)"). Lo que no es acorde se queda tal cual. Cada trozo se queda en su columna.
+function renderSpecialLine(line) {
+  const label = introLabel(line);
+  const rest  = line.slice(label.length);
+  const re = /\S+/g;
+  let out = '', m;
+  while ((m = re.exec(rest)) !== null) {
+    const col = m.index;
+    // separa los paréntesis pegados: "(D)" → "(" + "D" + ")", "(2º" → "(" + "2º"
+    const [, open, core, close] = m[0].match(/^(\(*)(.*?)(\)*)$/);
+    let chord = core;
+    if (isChordToken(core)) {
+      chord = transposeFullChord(core, transposeSteps);
+      if (useSpanishNotation) chord = chordToSpanish(chord);
+    }
+    const tok = open + chord + close;
+    if (out.length === 0 && col === 0) out = tok;
+    else if (out.length >= col)        out += ' ' + tok;
+    else                               out = out.padEnd(col, ' ') + tok;
+  }
+  return label + (hasChords(rest) ? `<span class="chord-line">${out}</span>` : out);
+}
+
+
+// ── 7. CARGA DE CANCIONES DESDE EL GOOGLE SHEET ──────────────────────────────
+// Columnas (por posición, la fila 1 de cabeceras se ignora):
+// A = Code · B = Título · C = Key · D = Sección · E = Letra y acordes
+
+// Lee el CSV respetando comillas y saltos de línea dentro de las celdas
+function parseCSV(text) {
+  const rows = [];
+  let row = [], cell = '', inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === '"') {
+      if (inQuotes && text[i + 1] === '"') { cell += '"'; i++; }
+      else inQuotes = !inQuotes;
+    } else if (ch === ',' && !inQuotes) {
+      row.push(cell); cell = '';
+    } else if ((ch === '\n' || ch === '\r') && !inQuotes) {
+      if (ch === '\r' && text[i + 1] === '\n') i++;
+      row.push(cell); cell = '';
+      if (row.some(c => c.trim())) rows.push(row);
+      row = [];
+    } else {
+      cell += ch;
+    }
+  }
+  if (cell || row.length) { row.push(cell); if (row.some(c => c.trim())) rows.push(row); }
+  return rows;
+}
+
+// Por si alguien escribe una canción en el Sheet con acordes en español (Do, SOL, lam...):
+// al cargar se pasan a inglés SOLO sus líneas de acordes; la letra no se toca.
+
+const SPANISH_TO_ENGLISH = {
+  'Do':'C','Re':'D','Mi':'E','Fa':'F','Sol':'G','La':'A','Si':'B',
+  'Do#':'C#','Re#':'D#','Mi#':'E#','Fa#':'F#','Sol#':'G#','La#':'A#','Si#':'B#',
+  'Dob':'Cb','Reb':'Db','Mib':'Eb','Fab':'Fb','Solb':'Gb','Lab':'Ab','Sib':'Bb'
+};
+
+// ¿Hay notas en español? Tanto "Do, Sol" como "DO, SOL"
+function detectSpanishNotation(text) {
+  return /\b(?:Do|Re|Mi|Fa|Sol|La|Si|DO|RE|MI|FA|SOL|LA|SI)[#Bb]?(?:maj|min|dim|aug|sus|add|MAJ|MIN|DIM|AUG|SUS|ADD|m|M)?\d*\b/
+    .test(text);
+}
+
+// MAYÚSCULAS → "Do Sol": DO → Do · SOL → Sol · LAM → Lam · RE7 → Re7 · DOM7 → Dom7
+function normalizeSpanishCase(text) {
+  return text.replace(
+    /\b(DO|RE|MI|FA|SOL|LA|SI)([#B]?)((?:MAJ|MIN|DIM|AUG|SUS|ADD|M)?\d*)\b/g,
+    (_, note, acc, mod) =>
+      note[0] + note.slice(1).toLowerCase() +   // DO→Do, SOL→Sol …
+      (acc === 'B' ? 'b' : acc) +                // B bemol → b minúscula
+      mod.toLowerCase()                          // MAJ→maj, M→m …
+  );
+}
+
+// ¿La línea son solo acordes (ingleses o españoles ya normalizados)? Evita tomar por acordes
+// palabras sueltas de la letra como "LA", "MI" o "RE".
+function isChordOnlyLine(line) {
+  const trimmed = line.trim();
+  if (!trimmed) return false;
+  const withoutChords = trimmed
+    .replace(/\b[A-G][#b]?(?:maj|min|dim|aug|sus|add|m)?\d*\b/g, '')
+    .replace(/\b(?:Do|Re|Mi|Fa|Sol|La|Si)[#b]?(?:maj|min|dim|aug|sus|add|m)?\d*\b/g, '');
+  return withoutChords.trim() === '';
+}
+
+// Una línea de acordes en español → inglés, ajustando los espacios para no descolocar los acordes
+function spanishChordsToEnglish(line) {
+  if (!line) return line;
+  return line.replace(/(Do|Re|Mi|Fa|Sol|La|Si)([#b]?)(?:m|maj|min|dim|aug|sus|add)?[0-9]*(\s*)/g,
+    (match, note, accidental, spaces) => {
+      const fullMatch = match.match(/^(Do|Re|Mi|Fa|Sol|La|Si)([#b]?)((?:m|maj|min|dim|aug|sus|add)?[0-9]*)/);
+      if (!fullMatch) return match;
+      const [, noteName, acc, modifiers] = fullMatch;
+      const fullNote  = noteName + acc;
+      const converted = SPANISH_TO_ENGLISH[fullNote];
+      if (!converted) return match;
+      const lengthDiff = (converted + modifiers).length - (fullNote + modifiers).length;
+      return converted + modifiers + ' '.repeat(Math.max(0, spaces.length - lengthDiff));
+    });
+}
+
+function normalizeKey(key) {
+  return spanishChordsToEnglish(key + ' ').trim();
+}
+
+function showListMessage(text, isError) {
+  document.getElementById('song-list').innerHTML =
+    `<li class="list-message${isError ? ' error' : ''}">${text}</li>`;
+}
+
+async function loadFromSheet() {
+  showListMessage('Cargando canciones...');
+  try {
+    const resp = await fetch(SHEET_CSV_URL);
+    const text = await resp.text();
+    const rows = parseCSV(text);
+
+    SONGS = rows.slice(1)
+      .filter(r => r[0] && r[0].trim())          // filas sin code se ignoran
+      .map(r => {
+        // Se quitan líneas vacías al principio y espacios al final, pero NO la sangría
+        // de la primera línea (si no, el primer acorde se descoloca)
+        const rawChords = r[4] ? r[4].replace(/^\s*\n/, '').trimEnd() : '';
+        const rawKey    = r[2] ? r[2].trim() : '';
+
+        // Canción con acordes en español: se pasan a inglés solo las líneas de acordes
+        const isSpanish = detectSpanishNotation(rawChords) || detectSpanishNotation(rawKey);
+        const chordpro = isSpanish
+          ? rawChords.split('\n').map(line => {
+              const norm = normalizeSpanishCase(line);
+              return isChordOnlyLine(norm) ? spanishChordsToEnglish(norm) : line;
+            }).join('\n')
+          : rawChords;
+        const key = isSpanish ? normalizeKey(normalizeSpanishCase(rawKey)) : rawKey;
+
+        return { code: r[0].trim(), title: r[1].trim(), key, section: r[3].trim(), chordpro };
+      });
+
+    renderThemeFilter();
+    renderList();
+    openFromLink();   // si se ha abierto un enlace a una canción (#205/+2), se abre
+  } catch (e) {
+    showListMessage('Error al cargar. Comprueba que el Google Sheet está publicado como CSV.', true);
+    console.error(e);
+  }
+}
+
+
+// ── 8. LISTA DE CANCIONES Y FILTRO POR SECCIÓN ───────────────────────────────
+
+function renderThemeFilter() {
+  const div     = document.getElementById('theme-filter');
+  const inUse   = new Set(SONGS.map(s => s.section));
+  const visible = THEMES.filter(t => inUse.has(t));
+  div.innerHTML = ['Todas', ...visible].map(t => {
+    const isActive = (t === 'Todas' && activeTheme === null) || t === activeTheme;
+    const onclick  = t === 'Todas' ? 'setTheme(null)' : `setTheme('${t}')`;
+    return `<button onclick="${onclick}" class="${isActive ? 'active' : ''}">${t}</button>`;
+  }).join('');
+}
+
+function setTheme(theme) {
+  activeTheme = theme;
+  renderThemeFilter();
+  renderList();
+}
+
+// Lista agrupada por sección, filtrada por la sección elegida y por el buscador
+// (busca en título, código y letra/acordes)
+function renderList() {
+  const q = document.getElementById('search').value.toLowerCase().trim();
+  const filtered = SONGS
+    .map((s, i) => ({ ...s, index: i }))
+    .filter(s => {
+      if (activeTheme && s.section !== activeTheme) return false;
+      if (!q) return true;
+      return s.title.toLowerCase().includes(q)
+          || s.code.toLowerCase().includes(q)
+          || s.chordpro.toLowerCase().includes(q);
+    });
+
+  if (!filtered.length) {
+    showListMessage('No se encontraron canciones.');
+    return;
+  }
+
+  const groups = {};
+  for (const s of filtered) {
+    if (!groups[s.section]) groups[s.section] = [];
+    groups[s.section].push(s);
+  }
+  const orderedThemes = THEMES.filter(t => groups[t]);
+
+  let html = '';
+  for (const theme of orderedThemes) {
+    if (orderedThemes.length > 1)
+      html += `<div class="theme-group-title">${theme}</div>`;
+    for (const s of groups[theme]) {
+      html += `<li class="${s.index === currentIndex ? 'active' : ''}" onclick="loadSong(${s.index})">
+        <span class="song-code">${s.code}</span>${s.title}
+      </li>`;
+    }
+  }
+  document.getElementById('song-list').innerHTML = html;
+}
+
+
+// ── 9. VISOR DE LA CANCIÓN ───────────────────────────────────────────────────
+
+// steps: tono con el que se abre (por un enlace). updateLink: false cuando viene del botón "atrás"/"adelante"
+function loadSong(index, steps = 0, updateLink = true) {
+  const wasOpen  = currentIndex !== null;
+  currentIndex   = index;
+  transposeSteps = (steps % 12) || 0;
+  song = parseSong(SONGS[index].chordpro);
+  if (transposeSteps !== 0) song = song.transpose(transposeSteps);
+  renderSong();
+  renderList();
+  document.getElementById('song-viewer').style.display = 'block';
+  document.getElementById('song-viewer').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  // Desde la lista se añade un paso al historial (así "atrás" vuelve a la lista);
+  // de una canción a otra se sustituye (así "atrás" no va recorriendo canciones)
+  if (updateLink) updateLinkInAddressBar(!wasOpen);
+}
+
+// Cierra la canción y deja solo la lista (lo que hace el botón "atrás")
+function closeSong() {
+  currentIndex   = null;
+  transposeSteps = 0;
+  document.getElementById('song-viewer').style.display = 'none';
+  renderList();
+  window.scrollTo(0, 0);
+}
+
+function renderSong() {
+  const s = SONGS[currentIndex];
+  document.getElementById('viewer-title').textContent = `${s.code} · ${s.title}`;
+
+  // Tonalidad (de la columna C del Sheet), cambiada de tono y en Do-Re-Mi si toca
+  let currentKey = transposeSteps === 0 ? s.key : transposeChord(s.key, transposeSteps);
+  if (useSpanishNotation) currentKey = chordToSpanish(currentKey);
+
+  const toneText = formatTones(transposeSteps);
+  document.getElementById('viewer-meta').textContent =
+    `${s.section}  ·  Tonalidad: ${currentKey}` +
+    (toneText ? `  (${toneText})` : '');
+  document.getElementById('tone-label').textContent = toneText;
+
+  let coloredLines;
+  if (lyricsOnly) {
+    // Solo letra: se parte del texto original del Sheet (sin los huecos que mete la librería)
+    // y se quitan las líneas de acordes; no quedan dos líneas vacías seguidas
+    coloredLines = s.chordpro.split('\n')
+      .filter(l => !l.trim().startsWith('{') && !isChordishLine(l))
+      .filter((l, i, arr) => l.trim() || (i > 0 && arr[i - 1].trim()));
+    while (coloredLines.length && !coloredLines[0].trim()) coloredLines.shift();
+  } else {
+    // Con acordes: el texto lo prepara la librería (siempre en inglés); las líneas de
+    // "title:", "key:" y "capo:" que añade se quitan
+    const bodyLines = formatter.format(song).split('\n').filter(l =>
+      !l.startsWith('title: ') && !l.startsWith('key: ') && !l.startsWith('capo: ')
+    );
+    // En un solo paso: líneas especiales (apartado 6), y líneas de acordes en verde y en Do-Re-Mi si toca
+    coloredLines = bodyLines.map(line => {
+      const special = line.trim().match(/^⟦intro(\d+)⟧$/);
+      if (special) return renderSpecialLine(currentIntros[+special[1]]);
+      return isChordLine(line)
+        ? `<span class="chord-line">${useSpanishNotation ? convertChordLine(line) : line}</span>`
+        : line;
+    });
+  }
+
+  const preElement = document.getElementById('song');
+  preElement.innerHTML = '<pre>' + coloredLines.join('\n') + '</pre>';
+  preElement.querySelector('pre').style.fontSize = fontSize + 'px';
+}
+
+// Botones ⬇️ / ⬆️
+function transpose(steps) {
+  // 12 semitonos = una octava = mismo tono: el contador vuelve a 0 al llegar a ±12
+  transposeSteps = ((transposeSteps + steps) % 12) || 0;
+  // Se parte siempre de la canción original, así al volver a 0 queda exactamente igual que en el Sheet
+  song = parseSong(SONGS[currentIndex].chordpro);
+  if (transposeSteps !== 0) song = song.transpose(transposeSteps);
+  renderSong();
+  updateLinkInAddressBar(false);   // el enlace lleva el tono actual (#205/+2)
+}
+
+
+// ── 10. BOTONES: DO-RE-MI, SOLO LETRA, MODO NOCHE, TAMAÑO DE LETRA ───────────
+// Los botones de dos estados muestran lo que pasará al pulsarlos.
+
+function toggleNotation() {
+  useSpanishNotation = !useSpanishNotation;
+  savePref('cancionero.spanish', useSpanishNotation);
+  updateNotationButton();
+  if (currentIndex !== null) renderSong();
+}
+
+function updateNotationButton() {
+  document.getElementById('notation-toggle').textContent =
+    useSpanishNotation ? 'C-D-E' : 'Do-Re-Mi';
+}
+
+function toggleLyricsOnly() {
+  lyricsOnly = !lyricsOnly;
+  savePref('cancionero.lyricsOnly', lyricsOnly);
+  updateLyricsButton();
+  if (currentIndex !== null) renderSong();
+}
+
+// "C" tachada = quitar acordes · "C" normal = volver a mostrarlos
+function updateLyricsButton() {
+  const btn = document.getElementById('lyrics-toggle');
+  btn.classList.toggle('crossed', !lyricsOnly);
+  btn.title = lyricsOnly ? 'Mostrar acordes' : 'Solo letra (quitar acordes)';
+  btn.setAttribute('aria-label', btn.title);
+}
+
+// (el modo noche al abrir la página se aplica en index.html, antes de pintarla)
+function toggleDark() {
+  const dark = document.body.classList.toggle('dark');
+  savePref('cancionero.dark', dark);
+  updateDarkButton();
+}
+
+function updateDarkButton() {
+  document.getElementById('dark-toggle').textContent =
+    document.body.classList.contains('dark') ? '☀️' : '🌙';
+}
+
+// A- / A+ (de 10 a 24 px)
+function changeFontSize(delta) {
+  fontSize = Math.max(10, Math.min(24, fontSize + delta));
+  savePref('cancionero.fontSize', fontSize);
+  if (currentIndex !== null) renderSong();
+}
+
+
+// ── 11. ENLACE DIRECTO A UNA CANCIÓN Y COMPARTIR ─────────────────────────────
+// La dirección lleva la canción y el tono: …/cancionero/#205 o #205/+2 (semitonos)
+
+function songLink() {
+  const s = SONGS[currentIndex];
+  return '#' + encodeURIComponent(s.code) +
+    (transposeSteps ? '/' + (transposeSteps > 0 ? '+' : '') + transposeSteps : '');
+}
+
+function updateLinkInAddressBar(addStep) {
+  const url = location.pathname + location.search + songLink();
+  if (addStep) history.pushState(null, '', url);
+  else         history.replaceState(null, '', url);
+}
+
+// Lee la dirección: devuelve { index, steps } o null si no hay canción o no existe
+function songFromLink() {
+  const m = decodeURIComponent(location.hash.slice(1)).match(/^([^\/]+)(?:\/([+-]?\d+))?$/);
+  if (!m) return null;
+  const code  = m[1].trim().toLowerCase();
+  const index = SONGS.findIndex(s => s.code.toLowerCase() === code);
+  if (index === -1) return null;
+  return { index, steps: parseInt(m[2] || '0', 10) };
+}
+
+// Al abrir la web con un enlace: se deja la lista "debajo" en el historial, para que "atrás" vuelva a ella
+function openFromLink() {
+  if (!location.hash) return;
+  const found = songFromLink();
+  history.replaceState(null, '', location.pathname + location.search);   // la lista, sin canción
+  if (found) loadSong(found.index, found.steps, true);
+}
+
+// Botones "atrás" / "adelante" del navegador o del móvil
+window.addEventListener('popstate', () => {
+  const found = songFromLink();
+  if (found) loadSong(found.index, found.steps, false);
+  else if (currentIndex !== null) closeSong();
+});
+
+// Botón 📤: en el móvil, menú de compartir del teléfono; en el ordenador, copia el enlace
+async function shareSong() {
+  const s     = SONGS[currentIndex];
+  const url   = location.href;
+  const title = `${s.code} · ${s.title}` + (transposeSteps ? ` (${formatTones(transposeSteps)})` : '');
+  const isTouch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+  if (isTouch && navigator.share) {
+    try { await navigator.share({ title, text: title, url }); } catch (e) {}   // cancelar no es un error
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+    showToast('Enlace copiado');
+  } catch (e) {
+    showToast('Copia este enlace: ' + url);
+  }
+}
+
+// Aviso corto abajo de la pantalla
+let toastTimer = null;
+function showToast(text) {
+  const t = document.getElementById('toast');
+  t.textContent = text;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), text.length > 20 ? 6000 : 2500);
+}
+
+
+// ── 12. BOTÓN FLOTANTE 🔍 ────────────────────────────────────────────────────
+// Aparece cuando el cuadro de búsqueda ya no se ve; al pulsarlo sube arriba (sin abrir el teclado)
+
+function updateTopButton() {
+  const search = document.getElementById('search');
+  const hidden = window.scrollY > search.offsetTop + search.offsetHeight;
+  document.getElementById('top-btn').classList.toggle('show', hidden);
+}
+
+function goToTop() {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+window.addEventListener('scroll', updateTopButton, { passive: true });
+
+
+// ── 13. INICIO ───────────────────────────────────────────────────────────────
+updateNotationButton();
+updateLyricsButton();
+updateDarkButton();
+loadFromSheet();
