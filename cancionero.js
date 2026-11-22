@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════════
    CANCIONERO PASTORAL — funcionamiento
-   Versión 0 · 22/11/2026
+   Versión 1 · 22/11/2026
    Si cambias este archivo, sube el número de ?v= en index.html
 
    ÍNDICE
@@ -13,6 +13,7 @@
     7. Carga de canciones desde el Google Sheet
     8. Lista de canciones y filtro por sección
     9. Visor de la canción
+    9b. Canción anterior / siguiente (⏪ ⏩)
    10. Botones: Do-Re-Mi, solo letra, modo noche, tamaño de letra
    11. Enlace directo a una canción y compartir
    12. Botón flotante 🔍
@@ -403,19 +404,28 @@ function sinTildes(text) {
   return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
-// Lista agrupada por sección, filtrada por la sección elegida y por el buscador
-// (busca en título, código y letra/acordes, sin tener en cuenta las tildes)
-function renderList() {
-  const q = sinTildes(document.getElementById('search').value.trim());
+// Canciones de la lista, en el orden en que salen (por secciones, en el orden de THEMES),
+// filtradas por la sección elegida y por el buscador (busca en título, código y
+// letra/acordes, sin tener en cuenta las tildes). Con withFilters = false, todas.
+function listedSongs(withFilters = true) {
+  const q = withFilters ? sinTildes(document.getElementById('search').value.trim()) : '';
+  const theme = withFilters ? activeTheme : null;
   const filtered = SONGS
     .map((s, i) => ({ ...s, index: i }))
     .filter(s => {
-      if (activeTheme && s.section !== activeTheme) return false;
+      if (theme && s.section !== theme) return false;
       if (!q) return true;
       return sinTildes(s.title).includes(q)
           || sinTildes(s.code).includes(q)
           || sinTildes(s.chordpro).includes(q);
     });
+  return THEMES.flatMap(t => filtered.filter(s => s.section === t));
+}
+
+// Lista agrupada por sección
+function renderList() {
+  const filtered = listedSongs();
+  updateNavButtons();   // ⏪ ⏩ siguen esta lista
 
   if (!filtered.length) {
     showListMessage('No se encontraron canciones.');
@@ -511,6 +521,55 @@ function renderSong() {
   const preElement = document.getElementById('song');
   preElement.innerHTML = '<pre>' + coloredLines.join('\n') + '</pre>';
   preElement.querySelector('pre').style.fontSize = fontSize + 'px';
+}
+
+// ── 9b. CANCIÓN ANTERIOR / SIGUIENTE (⏪ ⏩) ─────────────────────────────────
+// Siguen el orden de la lista que se está viendo (con la sección y el buscador aplicados).
+// Si la canción abierta no está en esa lista (p. ej. se ha cambiado la búsqueda después),
+// siguen el orden de la lista completa. Al llegar al principio o al final, el botón se apaga.
+// Cada canción se abre en su tono original. Para las listas propias (mejora 11) bastará
+// con que navList() devuelva la lista elegida.
+
+// Posiciones (en SONGS) de las canciones por las que se pasa, en orden
+function navList() {
+  const list = listedSongs().map(s => s.index);
+  return list.includes(currentIndex) ? list : listedSongs(false).map(s => s.index);
+}
+
+// La canción de antes (delta = -1) o la de después (+1), o undefined si no hay
+function neighbourSong(delta) {
+  if (currentIndex === null) return undefined;
+  const list = navList();
+  const pos  = list.indexOf(currentIndex);
+  return pos === -1 ? undefined : list[pos + delta];
+}
+
+function goToSong(delta) {
+  const index = neighbourSong(delta);
+  if (index !== undefined) loadSong(index);
+}
+
+// Arriba, junto al título: solo ⏪ ⏩. Abajo, al final de la canción: también el código y el título
+function updateNavButtons() {
+  for (const [delta, id] of [[-1, 'prev'], [1, 'next']]) {
+    const index = neighbourSong(delta);
+    const s     = index !== undefined ? SONGS[index] : null;
+    const name  = s ? `${s.code} · ${s.title}` : '';
+    const hint  = s ? (delta < 0 ? 'Anterior: ' : 'Siguiente: ') + name
+                    : (delta < 0 ? 'Es la primera de la lista' : 'Es la última de la lista');
+    for (const btn of [document.getElementById(id + '-btn'), document.getElementById(id + '-btn-bottom')]) {
+      btn.disabled = !s;
+      btn.title = hint;
+      btn.setAttribute('aria-label', hint);
+    }
+    // abajo: el emoji siempre se ve; si el título no cabe, se corta con "…"
+    const bottom = document.getElementById(id + '-btn-bottom');
+    const label  = document.createElement('span');
+    label.className   = 'song-nav-name';
+    label.textContent = name;
+    bottom.replaceChildren(...(delta < 0 ? ['⏪', label] : [label, '⏩']));
+    bottom.style.visibility = s ? 'visible' : 'hidden';
+  }
 }
 
 // Botones ⬇️ / ⬆️

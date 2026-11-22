@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════════
    CANCIONERO PASTORAL — estilos (aspecto de la web)
-   Versión 0 · 22/11/2026
+   Versión 1 · 22/11/2026
    Si cambias este archivo, sube el número de ?v= en index.html
    ═══════════════════════════════════════════════════════════════════════ */
 
@@ -31,6 +31,16 @@ li.active .song-code { color:#1a7a4a; }
 #song-viewer { display:none; padding-bottom:80px; }   /* el margen de abajo: para que el botón 🔍 no tape el final */
 #song-viewer h2 { font-size:22px; margin-bottom:4px; }
 #song-viewer .song-meta { font-size:13px; color:#999; margin-bottom:14px; }
+
+/* botones ⏪ ⏩ (canción anterior / siguiente): a los lados del título y al final de la canción */
+.viewer-header { display:flex; align-items:center; gap:8px; padding-top:18px; margin-bottom:4px; }
+#song-viewer .viewer-header h2 { flex:1; margin:0; }
+.song-nav { font-size:18px; padding:5px 10px; border:1px solid #ccc; border-radius:6px; background:#fff; cursor:pointer; flex-shrink:0; }
+.song-nav:hover:not(:disabled) { background:#f0f0ee; }
+.song-nav:disabled { opacity:.3; cursor:default; }
+.song-nav-bottom { display:flex; justify-content:space-between; gap:10px; margin-top:24px; }
+.song-nav-bottom .song-nav { font-size:14px; padding:9px 12px; max-width:48%; display:flex; align-items:center; gap:6px; white-space:nowrap; }
+.song-nav-name { overflow:hidden; text-overflow:ellipsis; }
 
 /* botones del visor: tono, tamaño, Do-Re-Mi, solo letra, compartir */
 .transpose-controls { margin-bottom:16px; display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
@@ -85,6 +95,8 @@ body.dark #song-list li.active { background:#16301f; border-color:#2fae6a; }
 body.dark .song-code, body.dark .theme-group-title, body.dark #song-viewer .song-meta { color:#8a8a8a; }
 body.dark li.active .song-code { color:#4cc38a; }
 body.dark .controls-divider { background:#3a3a3a; }
+body.dark .song-nav { background:#1e1e1e; color:#e4e4e4; border-color:#3a3a3a; }
+body.dark .song-nav:hover:not(:disabled) { background:#2a2a2a; }
 body.dark #song .chord-line { color:#4cc38a; }
 
 /* ── MÓVIL (pantallas de 600 px o menos) ─────────────────────────────────── */
@@ -93,6 +105,7 @@ body.dark #song .chord-line { color:#4cc38a; }
   h1.main-title { font-size: 21px; margin-bottom: 12px; }
   #song-list li { padding: 11px 12px; }
   #song-viewer h2 { font-size: 19px; }
+  .song-nav { font-size: 16px; padding: 6px 8px; }
   .transpose-controls button { font-size: 14px; padding: 8px 10px; }
   .controls-divider { display: none; }
   #notation-toggle { margin-left: 0; }
