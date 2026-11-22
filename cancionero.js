@@ -340,13 +340,20 @@ async function loadFromSheet() {
     const text = await resp.text();
     const rows = parseCSV(text);
 
+    // Cada columna se busca por el nombre de su cabecera (fila 1), así se pueden
+    // reordenar las columnas del Sheet. Si no se encuentra, se usa la posición antigua.
+    const head = (rows[0] || []).map(h => (h || '').trim().toLowerCase());
+    const col = (name, pos) => { const i = head.indexOf(name.toLowerCase()); return i >= 0 ? i : pos; };
+    const C = { code: col('Code', 0), title: col('Título', 1), key: col('Key', 2),
+                section: col('Sección', 3), chords: col('Letra y acordes', 4) };
+
     SONGS = rows.slice(1)
-      .filter(r => r[0] && r[0].trim())          // filas sin code se ignoran
+      .filter(r => r[C.code] && r[C.code].trim())          // filas sin code se ignoran
       .map(r => {
         // Se quitan líneas vacías al principio y espacios al final, pero NO la sangría
         // de la primera línea (si no, el primer acorde se descoloca)
-        const rawChords = r[4] ? r[4].replace(/^\s*\n/, '').trimEnd() : '';
-        const rawKey    = r[2] ? r[2].trim() : '';
+        const rawChords = r[C.chords] ? r[C.chords].replace(/^\s*\n/, '').trimEnd() : '';
+        const rawKey    = r[C.key] ? r[C.key].trim() : '';
 
         // Canción con acordes en español: se pasan a inglés solo las líneas de acordes
         const isSpanish = detectSpanishNotation(rawChords) || detectSpanishNotation(rawKey);
@@ -358,7 +365,7 @@ async function loadFromSheet() {
           : rawChords;
         const key = isSpanish ? normalizeKey(normalizeSpanishCase(rawKey)) : rawKey;
 
-        return { code: r[0].trim(), title: r[1].trim(), key, section: r[3].trim(), chordpro };
+        return { code: r[C.code].trim(), title: r[C.title].trim(), key, section: r[C.section].trim(), chordpro };
       });
 
     renderThemeFilter();
