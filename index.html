@@ -321,13 +321,112 @@ function updateLyricsButton() {
   btn.setAttribute('aria-label', btn.title);
 }
 
-// Para "solo letra": línea de acordes aunque lleve "Intro:", paréntesis, "(x2)" o "(bis)"
+// Etiquetas que pueden ir delante de una línea de acordes ("Intro: C F G")
+// (las palabras largas primero, y sin letras pegadas detrás: "Introducción" no es "Intro" + "ducción")
+const INTRO_LABEL_RE = /^(\s*(?:introducci[oó]n|instrumental|interludio|intro|int|m[uú]sica|mus|final|outro)(?![a-záéíóúüñ])\s*:?\s*)/i;
+
+// ── PARÉNTESIS EN LÍNEAS DE ACORDES: "C  G  (x2)", "Am  F  (2º Em A D)", "(III)" ──
+// Son indicaciones (repeticiones, otras versiones): se muestran TAL CUAL, sin cambiar de tono
+// ni pasar a Do-Re-Mi. El resto de la línea sí son acordes.
+
+const PAREN_GROUP_RE = /\([^()]*\)/g;
+// Lo que puede ir dentro de un paréntesis en una línea sin acordes fuera: "(x2)", "(bis)", "(III)", "(2º)"...
+const ANNOTATION_RE  = /^(x\s*\d+|\d+\s*x|bis|[IVX]+\.?|\d+[ºª]?\.?)$/i;
+
+function parenParts(line) {
+  const inside = (line.match(PAREN_GROUP_RE) || []).join(' ').replace(/[()]/g, ' ');
+  const outside = line.replace(PAREN_GROUP_RE, ' ');
+  return {
+    outTokens: outside.trim().split(/\s+/).filter(Boolean),
+    inTokens:  inside.trim().split(/\s+/).filter(Boolean),
+    balanced:  !/[()]/.test(outside),
+  };
+}
+
+// ¿Línea de acordes con paréntesis? Fuera del paréntesis, solo acordes.
+// Si fuera no hay nada ("(A)", "(x2)", "(III)"), dentro solo acordes o indicaciones.
+function isParenChordLine(line) {
+  if (!line.includes('(')) return false;
+  const { outTokens, inTokens, balanced } = parenParts(line);
+  if (!balanced || !outTokens.every(isChordToken)) return false;
+  if (outTokens.length) return true;
+  return inTokens.length > 0 && inTokens.every(t => isChordToken(t) || ANNOTATION_RE.test(t));
+}
+
+// ¿Lleva algún acorde (dentro o fuera del paréntesis)? → se pinta en verde y se quita en "solo letra"
+function hasChords(line) {
+  const { outTokens, inTokens } = parenParts(line);
+  return outTokens.some(isChordToken) || inTokens.some(isChordToken);
+}
+
+// Etiqueta "Intro:" (o similar) seguida de algo, o '' si no la hay
+function introLabel(line) {
+  const m = line.match(INTRO_LABEL_RE);
+  return m && /\S/.test(line.slice(m[1].length)) ? m[1] : '';
+}
+
+// Líneas que pinta la web por su cuenta: "Intro: C F G" y líneas de acordes con paréntesis
+function isSpecialLine(line) {
+  const label = introLabel(line);
+  const rest  = line.slice(label.length);
+  return (label && isChordLine(rest)) || isParenChordLine(rest);
+}
+
+// Para "solo letra": cualquier línea de acordes (normal, con "Intro:" o con paréntesis)
 function isChordishLine(line) {
-  const cleaned = line
-    .replace(/^\s*(intro|introducci[oó]n|int|mus|m[uú]sica|instrumental)\s*:?/i, '')
-    .replace(/\((?:x\s*\d+|bis)\)/gi, '')
-    .replace(/[()]/g, ' ');
-  return isChordLine(cleaned);
+  if (isChordLine(line)) return true;
+  return isSpecialLine(line) && hasChords(line.slice(introLabel(line).length));
+}
+
+// ── PINTAR LAS LÍNEAS ESPECIALES ──────────────────────────────────────────
+// La librería no las reconoce bien (las trata como letra, o cambia "(III)" por "(#IV)"), así que
+// la web las aparta antes de dárselas y luego las pinta ella misma.
+
+let currentIntros = [];                       // líneas especiales apartadas de la canción abierta
+const introMark = i => `⟦intro${i}⟧`;         // marca que ocupa su sitio mientras tanto
+
+// Prepara la canción: aparta las líneas especiales, deja la marca y se la da a la librería
+function parseSong(text) {
+  currentIntros = [];
+  const marked = text.split('\n').map(line => {
+    if (!isSpecialLine(line)) return line;
+    currentIntros.push(line);
+    return introMark(currentIntros.length - 1);
+  }).join('\n');
+  return parser.parse(marked);
+}
+
+// Un acorde completo cambiado de tono, también el bajo (C/E +2 → D/F#)
+function transposeFullChord(chord, steps) {
+  const m = chord.match(CHORD_RE);
+  if (!m || !steps) return chord;
+  const [, root, acc, suffix, bassRoot, bassAcc] = m;
+  return transposeChord(root + acc, steps) + suffix +
+    (bassRoot ? '/' + transposeChord(bassRoot + bassAcc, steps) : '');
+}
+
+// Etiqueta en color normal; el resto en verde si lleva acordes. Los acordes de FUERA del
+// paréntesis cambian de tono y de notación; lo de DENTRO se queda tal cual.
+// Cada trozo se queda en su columna (como en convertChordLine).
+function renderSpecialLine(line) {
+  const label = introLabel(line);
+  const rest  = line.slice(label.length);
+  const re = /\S+/g;
+  let out = '', m, depth = 0;
+  while ((m = re.exec(rest)) !== null) {
+    const col = m.index;
+    let tok = m[0];
+    const opens = (tok.match(/\(/g) || []).length, closes = (tok.match(/\)/g) || []).length;
+    if (depth === 0 && !opens && !closes && isChordToken(tok)) {
+      tok = transposeFullChord(tok, transposeSteps);
+      if (useSpanishNotation) tok = chordToSpanish(tok);
+    }
+    depth = Math.max(0, depth + opens - closes);
+    if (out.length === 0 && col === 0) out = tok;
+    else if (out.length >= col)        out += ' ' + tok;
+    else                               out = out.padEnd(col, ' ') + tok;
+  }
+  return label + (hasChords(rest) ? `<span class="chord-line">${out}</span>` : out);
 }
 
 function updateNotationButton() {
@@ -484,7 +583,7 @@ function loadSong(index, steps = 0, updateLink = true) {
   const wasOpen  = currentIndex !== null;
   currentIndex   = index;
   transposeSteps = (steps % 12) || 0;
-  song = parser.parse(SONGS[index].chordpro);
+  song = parseSong(SONGS[index].chordpro);
   if (transposeSteps !== 0) song = song.transpose(transposeSteps);
   renderSong();
   renderList();
@@ -598,11 +697,13 @@ function renderSong() {
     );
 
     // Un solo paso: detectar línea de acordes (en inglés), convertir si toca y colorear
-    coloredLines = bodyLines.map(line =>
-      isChordLine(line)
+    coloredLines = bodyLines.map(line => {
+      const intro = line.trim().match(/^⟦intro(\d+)⟧$/);       // línea "Intro: ..." apartada
+      if (intro) return renderSpecialLine(currentIntros[+intro[1]]);
+      return isChordLine(line)
         ? `<span class="chord-line">${useSpanishNotation ? convertChordLine(line) : line}</span>`
-        : line
-    );
+        : line;
+    });
   }
 
   const preElement = document.getElementById('song');
@@ -634,7 +735,7 @@ function transpose(steps) {
   // 12 semitonos = una octava = mismo tono: el contador vuelve a 0 al llegar a ±12
   transposeSteps = ((transposeSteps + steps) % 12) || 0;
   // Se parte siempre de la canción original, así al volver a 0 queda exactamente igual que en el Sheet
-  song = parser.parse(SONGS[currentIndex].chordpro);
+  song = parseSong(SONGS[currentIndex].chordpro);
   if (transposeSteps !== 0) song = song.transpose(transposeSteps);
   renderSong();
   updateLinkInAddressBar(false);   // el enlace lleva el tono actual (#205/+2)
