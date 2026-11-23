@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════════
    CANCIONERO PASTORAL — funcionamiento
-   Versión 1 · 22/11/2026
+   Versión 2 · 23/11/2026
    Si cambias este archivo, sube el número de ?v= en index.html
 
    ÍNDICE
@@ -17,6 +17,7 @@
    10. Botones: Do-Re-Mi, solo letra, modo noche, tamaño de letra
    11. Enlace directo a una canción y compartir
    12. Botón flotante 🔍
+   12b. Imprimir / guardar en PDF (🖨️)
    13. Inicio
    ═══════════════════════════════════════════════════════════════════════ */
 
@@ -717,6 +718,21 @@ function goToTop() {
 }
 
 window.addEventListener('scroll', updateTopButton, { passive: true });
+
+
+// ── 12b. IMPRIMIR / GUARDAR EN PDF (🖨️) ──────────────────────────────────────
+// Abre la ventana de imprimir del navegador, que también tiene "Guardar como PDF".
+// Se imprime la canción tal como se ve (tono, Do-Re-Mi, solo letra). El aspecto en papel
+// está en estilos.css (apartado IMPRIMIR). Mientras se imprime, el título de la página es
+// el de la canción, para que el PDF se guarde con ese nombre ("205 · Título (+1 tono)").
+
+const PAGE_TITLE = document.title;
+function printSong() {
+  const s = SONGS[currentIndex];
+  document.title = `${s.code} · ${s.title}` + (transposeSteps ? ` (${formatTones(transposeSteps)})` : '');
+  window.print();
+}
+window.addEventListener('afterprint', () => { document.title = PAGE_TITLE; });
 
 
 // ── 13. INICIO ───────────────────────────────────────────────────────────────
