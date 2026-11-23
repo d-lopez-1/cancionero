@@ -5,13 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cancionero</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🎵</text></svg>">
-  <!-- Cancionero Pastoral · Versión 1 (22/11/2026): botones ⏪ ⏩ y búsqueda sin tildes
+  <!-- Cancionero Pastoral · Versión 2 (23/11/2026): botón 🖨️ imprimir / guardar en PDF y librería comprimida
        Archivos: index.html (esta página), estilos.css (aspecto), cancionero.js (funcionamiento),
-       bundle.js (librería de acordes ChordSheetJS).
-       El "?v=1" de los enlaces es el número de versión de cada archivo: súbelo (?v=1.1, ?v=1.2...)
+       bundle.min.js (librería de acordes ChordSheetJS, comprimida: la misma que bundle.js, pero carga antes).
+       El "?v=2" de los enlaces es el número de versión de cada archivo: súbelo (?v=2.1, ?v=2.2...)
        cada vez que cambies ese archivo, para que los navegadores no usen la copia vieja. -->
-  <script src="bundle.js"></script>
-  <link rel="stylesheet" href="estilos.css?v=1">
+  <script src="bundle.min.js"></script>
+  <link rel="stylesheet" href="estilos.css?v=2">
 </head>
 <body>
 <script>
@@ -52,6 +52,7 @@
     <button id="notation-toggle" onclick="toggleNotation()">Do-Re-Mi</button>
     <button id="lyrics-toggle" onclick="toggleLyricsOnly()"><span class="chord-icon">C</span></button>
     <button id="share-btn" onclick="shareSong()" title="Compartir canción" aria-label="Compartir canción">📤</button>
+    <button id="print-btn" onclick="printSong()" title="Imprimir o guardar en PDF" aria-label="Imprimir o guardar en PDF">🖨️</button>
   </div>
   <div id="song"></div>
   <div class="song-nav-bottom">
@@ -63,7 +64,7 @@
 <button id="top-btn" onclick="goToTop()" title="Volver a la búsqueda" aria-label="Volver arriba, a la búsqueda">🔍</button>
 <div id="toast" role="status"></div>
 
-<script src="cancionero.js?v=1"></script>
+<script src="cancionero.js?v=2"></script>
 
 </body>
 </html>
