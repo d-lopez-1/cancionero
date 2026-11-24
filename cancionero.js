@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════════
    CANCIONERO PASTORAL — funcionamiento
-   Versión 3 · 23/11/2026 (Mi lista)
+   Versión 4 · 24/11/2026 (compartir Mi lista con un enlace)
    Si cambias este archivo, sube el número de ?v= en index.html
 
    ÍNDICE
@@ -19,6 +19,7 @@
    12. Botón flotante 🔍
    12b. Imprimir / guardar en PDF (🖨️)
    12c. Mi lista (📋)
+   12d. Compartir Mi lista con un enlace
    13. Inicio
    ═══════════════════════════════════════════════════════════════════════ */
 
@@ -673,6 +674,7 @@ function songFromLink() {
 // Al abrir la web con un enlace: se deja la lista "debajo" en el historial, para que "atrás" vuelva a ella
 function openFromLink() {
   if (!location.hash) return;
+  if (openSharedListFromLink()) return;   // enlace a una lista (#lista=…), apartado 12d
   const found = songFromLink();
   history.replaceState(null, '', location.pathname + location.search);   // la lista, sin canción
   if (found) loadSong(found.index, found.steps, true);
@@ -683,6 +685,7 @@ window.addEventListener('popstate', () => {
   const found = songFromLink();
   if (found) loadSong(found.index, found.steps, false);
   else if (currentIndex !== null) closeSong();
+  if (!found && SONGS.length && newSharedListInLink()) openSharedListFromLink();   // enlace de lista pegado con la web abierta (12d)
 });
 
 // Botón 📤: en el móvil, menú de compartir del teléfono; en el ordenador, copia el enlace
@@ -774,11 +777,16 @@ function saveMyList() {
   savePref('cancionero.myList', myList);
 }
 
-// Canciones de Mi lista que existen en el Sheet: [{ code, steps, index }]
-function myListSongs() {
-  return myList
+// Canciones de una lista que existen en el Sheet: [{ code, steps, index }]
+function existingSongs(list) {
+  return list
     .map(e => ({ ...e, index: SONGS.findIndex(s => s.code === e.code) }))
     .filter(e => e.index !== -1);
+}
+
+// La lista que se ve: la compartida que se está mirando (apartado 12d) o Mi lista
+function myListSongs() {
+  return existingSongs(sharedList || myList);
 }
 
 function myListIndexes() {
@@ -799,6 +807,7 @@ function navigatingMyList() {
 function toggleListMode() {
   listMode = !listMode;
   savePref('cancionero.listMode', listMode);
+  if (!listMode && sharedList) { closeSharedList(); return; }   // al cerrar, se deja de ver la compartida
   refreshMyList();
 }
 
@@ -813,7 +822,7 @@ function refreshMyList() {
 
 // ➕ / ✓ de cada fila de la lista general (solo en modo lista)
 function listAddButton(index) {
-  if (!listMode) return '';
+  if (!listMode || sharedList) return '';   // mirando una lista compartida no se añade
   const inList = myListPos(index) !== -1;
   const label  = inList ? 'Quitar de Mi lista' : 'Añadir a Mi lista';
   return `<button class="list-add${inList ? ' in-list' : ''}" onclick="event.stopPropagation(); toggleInMyList(${index}, 0)"
@@ -831,7 +840,7 @@ function toggleInMyList(index, steps) {
     myList.splice(pos, 1);
     showToast('Quitada de Mi lista');
   }
-  myList = myListSongs().map(({ code, steps }) => ({ code, steps }));   // fuera las que ya no existen
+  myList = existingSongs(myList).map(({ code, steps }) => ({ code, steps }));   // fuera las que ya no existen
   saveMyList();
   refreshMyList();
 }
@@ -842,6 +851,14 @@ function updateViewerListButton() {
   btn.style.display = listMode ? '' : 'none';
   if (!listMode) return;
   const pos = myListPos(currentIndex);
+  btn.disabled = !!sharedList;
+  if (sharedList) {   // mirando una lista compartida: solo dice en qué puesto va
+    btn.style.display = pos === -1 ? 'none' : '';
+    btn.classList.add('in-list');
+    btn.textContent = `📋 Lista compartida (${pos + 1} de ${myListIndexes().length})`;
+    btn.title = '';
+    return;
+  }
   btn.classList.toggle('in-list', pos !== -1);
   btn.textContent = pos === -1 ? '➕ Añadir a Mi lista' : `✓ En Mi lista (${pos + 1} de ${myListIndexes().length})`;
   btn.title = pos === -1 ? 'Añadir a Mi lista con el tono actual' : 'Quitar de Mi lista';
@@ -861,8 +878,8 @@ function openMyListSong(pos) {
 function rememberListTone() {
   if (!navigatingMyList()) return;
   const code = SONGS[currentIndex].code;
-  const e = myList.find(e => e.code === code);
-  if (e) { e.steps = transposeSteps; saveMyList(); renderMyList(); }
+  const e = (sharedList || myList).find(e => e.code === code);
+  if (e) { e.steps = transposeSteps; if (!sharedList) saveMyList(); renderMyList(); }
 }
 
 // ⬆ (delta = -1) / ⬇ (+1): mueve la canción de la posición pos
@@ -886,7 +903,16 @@ function renderMyList() {
   box.style.display = listMode ? 'block' : 'none';
   if (!listMode) return;
   const songs = myListSongs();
-  let html = `<div class="my-list-title">📋 Mi lista${songs.length ? ` <span class="my-list-count">(${songs.length})</span>` : ''}</div>`;
+  const count = songs.length ? ` <span class="my-list-count">(${songs.length})</span>` : '';
+  let html = sharedList
+    ? `<div class="my-list-title">📋 Lista compartida${count}</div>
+       <div class="shared-buttons">
+         <button class="shared-save${saveConfirm ? ' confirm' : ''}" onclick="saveSharedList()">${saveConfirm
+           ? '¿Sustituir tu lista? Pulsa otra vez' : '💾 Guardar como Mi lista'}</button>
+         <button onclick="closeSharedList()" title="Volver a Mi lista">✕ Cerrar</button>
+       </div>`
+    : `<div class="my-list-title">📋 Mi lista${count}${songs.length
+         ? '<button id="share-list-btn" onclick="shareMyList()" title="Compartir la lista" aria-label="Compartir la lista">📤</button>' : ''}</div>`;
   if (!SONGS.length) {
     html += '<p class="my-list-empty">Cargando canciones...</p>';
   } else if (!songs.length) {
@@ -899,15 +925,129 @@ function renderMyList() {
       return `<li class="${active ? 'active' : ''}" onclick="openMyListSong(${pos})">
         <span class="my-list-num">${pos + 1}</span>
         <span class="my-list-name"><span class="song-code">${s.code}</span>${s.title}</span>${tone}
-        <span class="my-list-buttons">
+        ${sharedList ? '' : `<span class="my-list-buttons">
           <button onclick="event.stopPropagation(); moveInMyList(${pos}, -1)" ${pos === 0 ? 'disabled' : ''} title="Subir" aria-label="Subir">⬆️</button>
           <button onclick="event.stopPropagation(); moveInMyList(${pos}, 1)" ${pos === songs.length - 1 ? 'disabled' : ''} title="Bajar" aria-label="Bajar">⬇️</button>
           <button onclick="event.stopPropagation(); removeFromMyList(${pos})" title="Quitar de Mi lista" aria-label="Quitar de Mi lista">✕</button>
-        </span>
+        </span>`}
       </li>`;
     }).join('') + '</ol>';
   }
   box.innerHTML = html;
+}
+
+
+// ── 12d. COMPARTIR MI LISTA CON UN ENLACE ────────────────────────────────────
+// El 📤 del recuadro de Mi lista comparte un enlace con las canciones en orden y el tono de
+// cada una (en semitonos, como el de una canción): …/cancionero/#lista=H03+2,205,302-1
+// Quien lo abre ve la lista arriba como "Lista compartida" (se activa el modo lista), sin tocar
+// su Mi lista: puede abrir las canciones (en su tono, con ⏪ ⏩), y "💾 Guardar como Mi lista"
+// la guarda (si ya tenía otra, hay que pulsar dos veces, porque la sustituye). Si su Mi lista
+// está vacía, se guarda directamente. "✕ Cerrar" vuelve a su Mi lista.
+// Mientras se mira, la dirección conserva el #lista=… (así "atrás" y recargar la mantienen).
+
+let sharedList  = null;    // lista compartida que se está mirando ([{ code, steps }]) o null
+let saveConfirm = false;   // "Guardar" pulsado una vez con Mi lista llena: falta confirmar
+
+// Enlace de la lista que se ve
+function listLink() {
+  const items = myListSongs().map(e =>
+    encodeURIComponent(e.code) + (e.steps ? (e.steps > 0 ? '+' : '') + e.steps : ''));
+  return location.origin + location.pathname + '#lista=' + items.join(',');
+}
+
+// Lee un enlace de lista: [{ code, steps }] (solo las canciones que existen), o null si no lo es
+function sharedListFromLink() {
+  const m = decodeURIComponent(location.hash.slice(1)).match(/^lista=(.*)$/i);
+  if (!m) return null;
+  const list = [];
+  for (const item of m[1].split(',')) {
+    const p = item.trim().match(/^([^+\-\s]+)([+-]\d+)?$/);
+    if (!p) continue;
+    const s = SONGS.find(s => s.code.toLowerCase() === p[1].toLowerCase());
+    if (s && !list.some(e => e.code === s.code))
+      list.push({ code: s.code, steps: (parseInt(p[2] || '0', 10) % 12) || 0 });
+  }
+  return list;
+}
+
+// ¿La dirección lleva una lista distinta de la que ya se ve? (p. ej. se pega un enlace con la web abierta)
+function newSharedListInLink() {
+  const list = sharedListFromLink();
+  return list !== null && JSON.stringify(list) !== JSON.stringify(sharedList || myList);
+}
+
+// Al abrir la web con un enlace de lista. Devuelve true si lo era.
+function openSharedListFromLink() {
+  const list = sharedListFromLink();
+  if (list === null) return false;
+  listMode = true;
+  savePref('cancionero.listMode', true);
+  if (!list.length) {                          // ninguna canción válida: la web normal
+    history.replaceState(null, '', location.pathname + location.search);
+  } else if (!existingSongs(myList).length) {  // Mi lista vacía: se guarda directamente
+    myList = list;
+    saveMyList();
+    history.replaceState(null, '', location.pathname + location.search);
+    showToast('Lista guardada en Mi lista');
+  } else {
+    sharedList  = list;
+    saveConfirm = false;
+  }
+  refreshMyList();
+  window.scrollTo(0, 0);
+  return true;
+}
+
+// Deja la dirección sin #lista=… (si hay una canción abierta, ya lleva la suya)
+function clearListLink() {
+  if (currentIndex === null) history.replaceState(null, '', location.pathname + location.search);
+}
+
+// 💾 Guardar como Mi lista (con Mi lista llena, la primera pulsación solo pide confirmar)
+function saveSharedList() {
+  if (existingSongs(myList).length && !saveConfirm) {
+    saveConfirm = true;
+    renderMyList();
+    return;
+  }
+  myList = sharedList.map(({ code, steps }) => ({ code, steps }));
+  saveMyList();
+  sharedList  = null;
+  saveConfirm = false;
+  clearListLink();
+  showToast('Guardada como Mi lista');
+  refreshMyList();
+}
+
+// ✕ Cerrar: se deja de mirar la lista compartida y se vuelve a Mi lista
+function closeSharedList() {
+  sharedList  = null;
+  saveConfirm = false;
+  clearListLink();
+  refreshMyList();
+}
+
+// 📤 de Mi lista: en el móvil, menú de compartir del teléfono; en el ordenador, copia el enlace
+async function shareMyList() {
+  const songs = myListSongs();
+  const url   = listLink();
+  const title = `Lista de canciones (${songs.length})`;
+  const text  = title + ':\n' + songs.map((e, i) => {
+    const s = SONGS[e.index];
+    return `${i + 1}. ${s.code} · ${s.title}` + (e.steps ? ` (${formatTones(e.steps)})` : '');
+  }).join('\n');
+  const isTouch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+  if (isTouch && navigator.share) {
+    try { await navigator.share({ title, text, url }); } catch (e) {}   // cancelar no es un error
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+    showToast('Enlace de la lista copiado');
+  } catch (e) {
+    showToast('Copia este enlace: ' + url);
+  }
 }
 
 
