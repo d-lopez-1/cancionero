@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════════
    CANCIONERO PASTORAL — funcionamiento
-   Versión 2 · 23/11/2026
+   Versión 3 · 23/11/2026 (Mi lista)
    Si cambias este archivo, sube el número de ?v= en index.html
 
    ÍNDICE
@@ -18,6 +18,7 @@
    11. Enlace directo a una canción y compartir
    12. Botón flotante 🔍
    12b. Imprimir / guardar en PDF (🖨️)
+   12c. Mi lista (📋)
    13. Inicio
    ═══════════════════════════════════════════════════════════════════════ */
 
@@ -427,6 +428,7 @@ function listedSongs(withFilters = true) {
 function renderList() {
   const filtered = listedSongs();
   updateNavButtons();   // ⏪ ⏩ siguen esta lista
+  renderMyList();       // Mi lista (apartado 12c): marca la canción abierta
 
   if (!filtered.length) {
     showListMessage('No se encontraron canciones.');
@@ -446,7 +448,7 @@ function renderList() {
       html += `<div class="theme-group-title">${theme}</div>`;
     for (const s of groups[theme]) {
       html += `<li class="${s.index === currentIndex ? 'active' : ''}" onclick="loadSong(${s.index})">
-        <span class="song-code">${s.code}</span>${s.title}
+        <span class="song-code">${s.code}</span>${s.title}${listAddButton(s.index)}
       </li>`;
     }
   }
@@ -457,9 +459,11 @@ function renderList() {
 // ── 9. VISOR DE LA CANCIÓN ───────────────────────────────────────────────────
 
 // steps: tono con el que se abre (por un enlace). updateLink: false cuando viene del botón "atrás"/"adelante"
-function loadSong(index, steps = 0, updateLink = true) {
+// fromMyList: true cuando se abre desde Mi lista (entonces ⏪ ⏩ siguen Mi lista, apartado 12c)
+function loadSong(index, steps = 0, updateLink = true, fromMyList = false) {
   const wasOpen  = currentIndex !== null;
   currentIndex   = index;
+  openedFromMyList = fromMyList;
   transposeSteps = (steps % 12) || 0;
   song = parseSong(SONGS[index].chordpro);
   if (transposeSteps !== 0) song = song.transpose(transposeSteps);
@@ -475,6 +479,7 @@ function loadSong(index, steps = 0, updateLink = true) {
 // Cierra la canción y deja solo la lista (lo que hace el botón "atrás")
 function closeSong() {
   currentIndex   = null;
+  openedFromMyList = false;
   transposeSteps = 0;
   document.getElementById('song-viewer').style.display = 'none';
   renderList();
@@ -494,6 +499,7 @@ function renderSong() {
     `${s.section}  ·  Tonalidad: ${currentKey}` +
     (toneText ? `  (${toneText})` : '');
   document.getElementById('tone-label').textContent = toneText;
+  updateViewerListButton();
 
   let coloredLines;
   if (lyricsOnly) {
@@ -533,6 +539,7 @@ function renderSong() {
 
 // Posiciones (en SONGS) de las canciones por las que se pasa, en orden
 function navList() {
+  if (navigatingMyList()) return myListIndexes();   // abierta desde Mi lista: se pasa por Mi lista
   const list = listedSongs().map(s => s.index);
   return list.includes(currentIndex) ? list : listedSongs(false).map(s => s.index);
 }
@@ -547,7 +554,9 @@ function neighbourSong(delta) {
 
 function goToSong(delta) {
   const index = neighbourSong(delta);
-  if (index !== undefined) loadSong(index);
+  if (index === undefined) return;
+  if (navigatingMyList()) openMyListSong(myListIndexes().indexOf(index));   // en su tono guardado
+  else loadSong(index);
 }
 
 // Arriba, junto al título: solo ⏪ ⏩. Abajo, al final de la canción: también el código y el título
@@ -582,6 +591,7 @@ function transpose(steps) {
   if (transposeSteps !== 0) song = song.transpose(transposeSteps);
   renderSong();
   updateLinkInAddressBar(false);   // el enlace lleva el tono actual (#205/+2)
+  rememberListTone();               // si se ve desde Mi lista, la lista guarda este tono
 }
 
 
@@ -735,8 +745,175 @@ function printSong() {
 window.addEventListener('afterprint', () => { document.title = PAGE_TITLE; });
 
 
+// ── 12c. MI LISTA (📋) ───────────────────────────────────────────────────────
+// Una lista de canciones propia (p. ej. el repertorio de una misa), guardada en el navegador
+// de cada uno. El botón 📋 de arriba activa o desactiva el "modo lista": con él activado se ve
+// Mi lista encima del buscador, y sale un ➕ en cada canción (en la lista general y dentro de la
+// canción abierta); ✓ = ya está en Mi lista (pulsar para quitarla). Sin el modo lista la web se
+// ve como siempre y Mi lista no se borra.
+// - Ordenar con ⬆ ⬇ y quitar con ✕.
+// - Cada canción recuerda su tono: el que tenía al añadirla desde dentro, y el que se le ponga
+//   después mientras se ve desde Mi lista.
+// - Al abrir una canción desde Mi lista, ⏪ ⏩ pasan por Mi lista, cada una en su tono.
+// Se guarda por código ({ code, steps }), así sigue valiendo aunque se reordene el Sheet.
+// Si una canción ya no está en el Sheet, no sale.
+
+let listMode         = loadPref('cancionero.listMode', false) === true;
+let myList           = loadMyList();
+let openedFromMyList = false;    // la canción abierta se ha abierto desde Mi lista
+
+function loadMyList() {
+  const saved = loadPref('cancionero.myList', []);
+  return Array.isArray(saved)
+    ? saved.filter(e => e && typeof e.code === 'string')
+           .map(e => ({ code: e.code, steps: (Number(e.steps) % 12) || 0 }))
+    : [];
+}
+
+function saveMyList() {
+  savePref('cancionero.myList', myList);
+}
+
+// Canciones de Mi lista que existen en el Sheet: [{ code, steps, index }]
+function myListSongs() {
+  return myList
+    .map(e => ({ ...e, index: SONGS.findIndex(s => s.code === e.code) }))
+    .filter(e => e.index !== -1);
+}
+
+function myListIndexes() {
+  return myListSongs().map(e => e.index);
+}
+
+// Posición en Mi lista de una canción (posición en SONGS), o -1
+function myListPos(index) {
+  return myListIndexes().indexOf(index);
+}
+
+// ¿⏪ ⏩ siguen Mi lista? Si se ha abierto desde ella, el modo lista está activado y sigue en ella
+function navigatingMyList() {
+  return openedFromMyList && listMode && myListPos(currentIndex) !== -1;
+}
+
+// Botón 📋: activa o desactiva el modo lista
+function toggleListMode() {
+  listMode = !listMode;
+  savePref('cancionero.listMode', listMode);
+  refreshMyList();
+}
+
+// Vuelve a pintar todo lo que depende de Mi lista
+function refreshMyList() {
+  document.getElementById('list-toggle').classList.toggle('on', listMode);
+  document.getElementById('list-toggle').title = listMode ? 'Cerrar Mi lista' : 'Mi lista';
+  renderMyList();
+  if (SONGS.length) renderList();          // ➕ / ✓ en cada fila (y ⏪ ⏩)
+  if (currentIndex !== null) updateViewerListButton();
+}
+
+// ➕ / ✓ de cada fila de la lista general (solo en modo lista)
+function listAddButton(index) {
+  if (!listMode) return '';
+  const inList = myListPos(index) !== -1;
+  const label  = inList ? 'Quitar de Mi lista' : 'Añadir a Mi lista';
+  return `<button class="list-add${inList ? ' in-list' : ''}" onclick="event.stopPropagation(); toggleInMyList(${index}, 0)"
+    title="${label}" aria-label="${label}">${inList ? '✓' : '➕'}</button>`;
+}
+
+// Añade la canción (con el tono indicado) o la quita si ya estaba
+function toggleInMyList(index, steps) {
+  const code = SONGS[index].code;
+  const pos  = myList.findIndex(e => e.code === code);
+  if (pos === -1) {
+    myList.push({ code, steps });
+    showToast('Añadida a Mi lista');
+  } else {
+    myList.splice(pos, 1);
+    showToast('Quitada de Mi lista');
+  }
+  myList = myListSongs().map(({ code, steps }) => ({ code, steps }));   // fuera las que ya no existen
+  saveMyList();
+  refreshMyList();
+}
+
+// Botón de dentro de la canción: ➕ Añadir a Mi lista / ✓ En Mi lista (2 de 5)
+function updateViewerListButton() {
+  const btn = document.getElementById('list-add-btn');
+  btn.style.display = listMode ? '' : 'none';
+  if (!listMode) return;
+  const pos = myListPos(currentIndex);
+  btn.classList.toggle('in-list', pos !== -1);
+  btn.textContent = pos === -1 ? '➕ Añadir a Mi lista' : `✓ En Mi lista (${pos + 1} de ${myListIndexes().length})`;
+  btn.title = pos === -1 ? 'Añadir a Mi lista con el tono actual' : 'Quitar de Mi lista';
+}
+
+function toggleCurrentInMyList() {
+  toggleInMyList(currentIndex, transposeSteps);   // se guarda con el tono que tiene ahora
+}
+
+// Abre la canción que está en la posición pos de Mi lista, en su tono guardado
+function openMyListSong(pos) {
+  const e = myListSongs()[pos];
+  if (e) loadSong(e.index, e.steps, true, true);
+}
+
+// Si la canción abierta se ve desde Mi lista, la lista guarda su tono nuevo
+function rememberListTone() {
+  if (!navigatingMyList()) return;
+  const code = SONGS[currentIndex].code;
+  const e = myList.find(e => e.code === code);
+  if (e) { e.steps = transposeSteps; saveMyList(); renderMyList(); }
+}
+
+// ⬆ (delta = -1) / ⬇ (+1): mueve la canción de la posición pos
+function moveInMyList(pos, delta) {
+  const list = myListSongs().map(({ code, steps }) => ({ code, steps }));
+  const to = pos + delta;
+  if (to < 0 || to >= list.length) return;
+  [list[pos], list[to]] = [list[to], list[pos]];
+  myList = list;
+  saveMyList();
+  refreshMyList();
+}
+
+function removeFromMyList(pos) {
+  toggleInMyList(myListSongs()[pos].index, 0);
+}
+
+// El recuadro de Mi lista (encima del buscador)
+function renderMyList() {
+  const box = document.getElementById('my-list');
+  box.style.display = listMode ? 'block' : 'none';
+  if (!listMode) return;
+  const songs = myListSongs();
+  let html = `<div class="my-list-title">📋 Mi lista${songs.length ? ` <span class="my-list-count">(${songs.length})</span>` : ''}</div>`;
+  if (!SONGS.length) {
+    html += '<p class="my-list-empty">Cargando canciones...</p>';
+  } else if (!songs.length) {
+    html += '<p class="my-list-empty">Está vacía. Pulsa ➕ en una canción para añadirla.</p>';
+  } else {
+    html += '<ol>' + songs.map((e, pos) => {
+      const s = SONGS[e.index];
+      const active = navigatingMyList() && e.index === currentIndex;
+      const tone = e.steps ? `<span class="my-list-tone">${formatTones(e.steps)}</span>` : '';
+      return `<li class="${active ? 'active' : ''}" onclick="openMyListSong(${pos})">
+        <span class="my-list-num">${pos + 1}</span>
+        <span class="my-list-name"><span class="song-code">${s.code}</span>${s.title}</span>${tone}
+        <span class="my-list-buttons">
+          <button onclick="event.stopPropagation(); moveInMyList(${pos}, -1)" ${pos === 0 ? 'disabled' : ''} title="Subir" aria-label="Subir">⬆️</button>
+          <button onclick="event.stopPropagation(); moveInMyList(${pos}, 1)" ${pos === songs.length - 1 ? 'disabled' : ''} title="Bajar" aria-label="Bajar">⬇️</button>
+          <button onclick="event.stopPropagation(); removeFromMyList(${pos})" title="Quitar de Mi lista" aria-label="Quitar de Mi lista">✕</button>
+        </span>
+      </li>`;
+    }).join('') + '</ol>';
+  }
+  box.innerHTML = html;
+}
+
+
 // ── 13. INICIO ───────────────────────────────────────────────────────────────
 updateNotationButton();
 updateLyricsButton();
 updateDarkButton();
+refreshMyList();
 loadFromSheet();
