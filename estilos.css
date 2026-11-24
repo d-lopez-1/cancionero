@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════════
    CANCIONERO PASTORAL — estilos (aspecto de la web)
-   Versión 3 · 23/11/2026 (Mi lista)
+   Versión 4 · 24/11/2026 (compartir Mi lista)
    Si cambias este archivo, sube el número de ?v= en index.html
    ═══════════════════════════════════════════════════════════════════════ */
 
@@ -89,6 +89,14 @@ body.dark #lyrics-toggle .chord-icon { color:#4cc38a; }
 #song-list li:has(.list-add) { align-items:center; padding-top:4px; padding-bottom:4px; }
 #song-list li .list-add { margin-left:auto; align-self:center; flex-shrink:0; font-size:14px; width:34px; height:30px; padding:0; border:1px solid #ccc; border-radius:6px; background:#fff; cursor:pointer; }
 .list-add.in-list, #list-add-btn.in-list { color:#1a7a4a; font-weight:bold; border-color:#1a7a4a; background:#eef6f1; }
+/* compartir Mi lista (📤) y lista compartida (💾 Guardar / ✕ Cerrar) */
+.my-list-title { display:flex; align-items:center; gap:6px; }
+#share-list-btn { margin-left:auto; font-size:16px; padding:3px 10px; border:1px solid #ccc; border-radius:6px; background:#fff; cursor:pointer; }
+.shared-buttons { display:flex; flex-wrap:wrap; gap:6px; margin:0 2px 8px; }
+.shared-buttons button { font-size:14px; padding:7px 12px; border:1px solid #ccc; border-radius:6px; background:#fff; cursor:pointer; }
+.shared-buttons .shared-save { border-color:#1a7a4a; color:#1a7a4a; font-weight:bold; }
+.shared-buttons .shared-save.confirm { background:#1a7a4a; color:#fff; }
+#list-add-btn:disabled { cursor:default; }
 #list-add-btn { font-size:14px; padding:6px 12px; margin:-6px 0 12px; border:1px solid #ccc; border-radius:6px; background:#fff; cursor:pointer; }
 
 /* ── BOTÓN FLOTANTE 🔍 (volver arriba, a la búsqueda) ────────────────────── */
@@ -127,6 +135,9 @@ body.dark #list-toggle, body.dark #list-add-btn, body.dark .my-list-buttons butt
 body.dark #song-list li .list-add { background:#1e1e1e; color:#e4e4e4; border-color:#3a3a3a; }
 body.dark #list-toggle.on, body.dark .list-add.in-list, body.dark #list-add-btn.in-list { background:#16301f; border-color:#2fae6a; color:#4cc38a; }
 body.dark #my-list { background:#151d18; border-color:#2fae6a; }
+body.dark #share-list-btn, body.dark .shared-buttons button { background:#1e1e1e; color:#e4e4e4; border-color:#3a3a3a; }
+body.dark .shared-buttons .shared-save { color:#4cc38a; border-color:#2fae6a; }
+body.dark .shared-buttons .shared-save.confirm { background:#1a7a4a; color:#fff; }
 body.dark #my-list li { background:#1a1a1a; border-color:#333; }
 body.dark #my-list li:hover { background:#222; }
 body.dark #my-list li.active { background:#16301f; border-color:#2fae6a; }
