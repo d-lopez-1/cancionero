@@ -5,15 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cancionero</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🎵</text></svg>">
-  <!-- Cancionero Pastoral · Versión 4 (24/11/2026): compartir Mi lista con un enlace (botón 📤 de Mi lista)
+  <!-- Cancionero Pastoral · Versión 5 (24/11/2026): varias listas con nombre (desplegable en el recuadro de 📋)
+       Versión 4 (24/11/2026): compartir Mi lista con un enlace (botón 📤 de Mi lista)
        Versión 3 (23/11/2026): botón 📋 Mi lista (lista de canciones propia, guardada en el navegador)
        Versión 2 (23/11/2026): botón 🖨️ imprimir / guardar en PDF y librería comprimida
        Archivos: index.html (esta página), estilos.css (aspecto), cancionero.js (funcionamiento),
        bundle.min.js (librería de acordes ChordSheetJS, comprimida: la misma que bundle.js, pero carga antes).
-       El "?v=4" de los enlaces es el número de versión de cada archivo: súbelo (?v=2.1, ?v=2.2...)
+       El "?v=5" de los enlaces es el número de versión de cada archivo: súbelo (?v=2.1, ?v=2.2...)
        cada vez que cambies ese archivo, para que los navegadores no usen la copia vieja. -->
   <script src="bundle.min.js"></script>
-  <link rel="stylesheet" href="estilos.css?v=4">
+  <link rel="stylesheet" href="estilos.css?v=5">
 </head>
 <body>
 <script>
@@ -28,7 +29,7 @@
 
 <h1 class="main-title">🎵 Cancionero Pastoral
   <button id="dark-toggle" onclick="toggleDark()" title="Modo noche" aria-label="Cambiar modo claro/noche"></button>
-  <button id="list-toggle" onclick="toggleListMode()" title="Mi lista" aria-label="Mi lista">📋</button>
+  <button id="list-toggle" onclick="toggleListMode()" title="Mis listas" aria-label="Mis listas">📋</button>
 <!--  <a id="suggest-btn" href="https://forms.gle/1nq47R5Nv6jpKeZj8" target="_blank" rel="noopener" title="Proponer canción, corrección o sugerencia" aria-label="Proponer canción, corrección o sugerencia">➕</a> -->
 </h1>
 
@@ -70,7 +71,7 @@
 <button id="top-btn" onclick="goToTop()" title="Volver a la búsqueda" aria-label="Volver arriba, a la búsqueda">🔍</button>
 <div id="toast" role="status"></div>
 
-<script src="cancionero.js?v=4"></script>
+<script src="cancionero.js?v=5"></script>
 
 </body>
 </html>

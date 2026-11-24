@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════════
    CANCIONERO PASTORAL — estilos (aspecto de la web)
-   Versión 4 · 24/11/2026 (compartir Mi lista)
+   Versión 5 · 24/11/2026 (varias listas con nombre)
    Si cambias este archivo, sube el número de ?v= en index.html
    ═══════════════════════════════════════════════════════════════════════ */
 
@@ -92,11 +92,22 @@ body.dark #lyrics-toggle .chord-icon { color:#4cc38a; }
 /* compartir Mi lista (📤) y lista compartida (💾 Guardar / ✕ Cerrar) */
 .my-list-title { display:flex; align-items:center; gap:6px; }
 #share-list-btn { margin-left:auto; font-size:16px; padding:3px 10px; border:1px solid #ccc; border-radius:6px; background:#fff; cursor:pointer; }
+/* varias listas: desplegable con el nombre, ✏️ 🗑️ 📤, y cuadro para escribir el nombre */
+#list-select { font:inherit; font-weight:bold; font-size:15px; min-width:0; max-width:55%; flex-shrink:1; padding:4px 6px; border:1px solid #ccc; border-radius:6px; background:#fff; color:inherit; cursor:pointer; text-overflow:ellipsis; }
+.list-tools { display:flex; gap:4px; margin-left:auto; flex-shrink:0; }
+.list-tools button { font-size:15px; padding:3px 7px; border:1px solid #ccc; border-radius:6px; background:#fff; cursor:pointer; }
+.list-tools #share-list-btn { margin-left:0; font-size:15px; padding:3px 7px; }
+.list-name-edit { display:flex; gap:6px; margin:0 2px 8px; }
+.list-name-edit input { flex:1; min-width:0; font-size:16px; padding:6px 8px; border:1px solid #1a7a4a; border-radius:6px; }
+.list-name-edit button { font-size:14px; padding:6px 10px; border:1px solid #ccc; border-radius:6px; background:#fff; cursor:pointer; white-space:nowrap; }
+.list-name-edit .shared-save { border-color:#1a7a4a; color:#1a7a4a; font-weight:bold; }
+#list-add-btn { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .shared-buttons { display:flex; flex-wrap:wrap; gap:6px; margin:0 2px 8px; }
 .shared-buttons button { font-size:14px; padding:7px 12px; border:1px solid #ccc; border-radius:6px; background:#fff; cursor:pointer; }
 .shared-buttons .shared-save { border-color:#1a7a4a; color:#1a7a4a; font-weight:bold; }
 .shared-buttons .shared-save.confirm { background:#1a7a4a; color:#fff; }
 #list-add-btn:disabled { cursor:default; }
+.shared-buttons .delete-confirm, body.dark .shared-buttons .delete-confirm { background:#b3261e; border-color:#b3261e; color:#fff; font-weight:bold; }
 #list-add-btn { font-size:14px; padding:6px 12px; margin:-6px 0 12px; border:1px solid #ccc; border-radius:6px; background:#fff; cursor:pointer; }
 
 /* ── BOTÓN FLOTANTE 🔍 (volver arriba, a la búsqueda) ────────────────────── */
@@ -135,8 +146,10 @@ body.dark #list-toggle, body.dark #list-add-btn, body.dark .my-list-buttons butt
 body.dark #song-list li .list-add { background:#1e1e1e; color:#e4e4e4; border-color:#3a3a3a; }
 body.dark #list-toggle.on, body.dark .list-add.in-list, body.dark #list-add-btn.in-list { background:#16301f; border-color:#2fae6a; color:#4cc38a; }
 body.dark #my-list { background:#151d18; border-color:#2fae6a; }
+body.dark #list-select, body.dark .list-tools button, body.dark .list-name-edit input, body.dark .list-name-edit button,
 body.dark #share-list-btn, body.dark .shared-buttons button { background:#1e1e1e; color:#e4e4e4; border-color:#3a3a3a; }
-body.dark .shared-buttons .shared-save { color:#4cc38a; border-color:#2fae6a; }
+body.dark .shared-buttons .shared-save, body.dark .list-name-edit .shared-save { color:#4cc38a; border-color:#2fae6a; }
+body.dark .list-name-edit input { border-color:#2fae6a; }
 body.dark .shared-buttons .shared-save.confirm { background:#1a7a4a; color:#fff; }
 body.dark #my-list li { background:#1a1a1a; border-color:#333; }
 body.dark #my-list li:hover { background:#222; }
