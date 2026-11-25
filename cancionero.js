@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════════
    CANCIONERO PASTORAL — funcionamiento
-   Versión 5 · 24/11/2026 (varias listas con nombre)
+   Versión 6 · 24/11/2026 (funciona sin conexión)
    Si cambias este archivo, sube el número de ?v= en index.html
 
    ÍNDICE
@@ -20,6 +20,7 @@
    12b. Imprimir / guardar en PDF (🖨️)
    12c. Mis listas (📋)
    12d. Compartir una lista con un enlace
+   12e. Sin conexión (sw.js)
    13. Inicio
    ═══════════════════════════════════════════════════════════════════════ */
 
@@ -342,6 +343,7 @@ async function loadFromSheet() {
   try {
     const resp = await fetch(SHEET_CSV_URL);
     const text = await resp.text();
+    sheetCopyInfo(resp, text);   // sin conexión: aviso con la fecha de la copia (apartado 12e)
     const rows = parseCSV(text);
 
     // Cada columna se busca por el nombre de su cabecera (fila 1), así se pueden
@@ -1199,6 +1201,35 @@ async function shareMyList() {
     showToast('Enlace de la lista copiado');
   } catch (e) {
     showToast('Copia este enlace: ' + url);
+  }
+}
+
+
+// ── 12e. SIN CONEXIÓN (sw.js) ────────────────────────────────────────────────
+// El archivo sw.js guarda en el navegador la web y las canciones cada vez que se abren con
+// conexión, y las usa cuando no la hay (siempre pide primero lo nuevo a internet).
+// Aquí: se activa sw.js, y si las canciones vienen de la copia guardada sale un aviso arriba
+// "📴 Sin conexión: canciones guardadas el 24/11/2026 a las 20:15".
+
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+function sheetCopyInfo(resp, text) {
+  const note = document.getElementById('offline-note');
+  if (resp.headers.get('X-Cancionero-Copia')) {
+    const when = new Date(resp.headers.get('X-Cancionero-Guardado') || '');
+    const date = isNaN(when) ? '' : ` el ${when.toLocaleDateString('es-ES')} a las ${when.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`;
+    note.textContent = `📴 Sin conexión: canciones guardadas${date}.`;
+    note.style.display = 'block';
+    return;
+  }
+  note.style.display = 'none';
+  // Copia de las canciones (la guarda también la página, porque la primera vez que se abre la
+  // web sw.js aún no está funcionando)
+  if (window.caches) {
+    const headers = { 'Content-Type': 'text/csv; charset=utf-8', 'X-Cancionero-Guardado': new Date().toISOString() };
+    caches.open('cancionero').then(c => c.put(SHEET_CSV_URL, new Response(text, { headers }))).catch(() => {});
   }
 }
 
