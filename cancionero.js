@@ -758,6 +758,7 @@ window.addEventListener('afterprint', () => { document.title = PAGE_TITLE; });
 // como mucho a 10 pt (las canciones más anchas, de unos 58 caracteres, quedan a 7 pt).
 // Se prepara al pulsar 🖨️ y también con Ctrl+P (evento beforeprint).
 function preparePrintCopy() {
+  if (document.body.classList.contains('printing-list')) return;   // se está imprimiendo una lista (12c)
   const pre = document.querySelector('#song pre');
   if (!pre || document.getElementById('song-viewer').style.display !== 'block') return;
   let copy = document.getElementById('song-print');
@@ -766,35 +767,43 @@ function preparePrintCopy() {
     copy.id = 'song-print';
     document.getElementById('song').after(copy);
   }
-  const lines = pre.innerHTML.split('\n').map(l => l.replace(/\s+(<\/span>)?$/, '$1'));   // sin espacios al final
-  const widest = Math.max(...pre.innerText.split('\n').map(l => l.trimEnd().length), 1);
-  const size = Math.min(10, Math.floor(252 / (0.61 * widest) * 4) / 4);   // 252 pt = ancho de una columna
-  copy.style.setProperty('--print-size', size + 'pt');
+  copy.style.setProperty('--print-size', printSize(pre.innerText) + 'pt');
+  copy.innerHTML = printStanzas(pre.innerHTML).join('');
+}
+window.addEventListener('beforeprint', preparePrintCopy);
 
-  // estrofas → bloques; dentro, cada línea de acordes va pegada a la línea siguiente
-  let html = '', stanza = [];
+// Tamaño de letra (pt) para que la línea más ancha quepa en media hoja: 252 pt = ancho de una columna
+function printSize(text) {
+  const widest = Math.max(...text.split('\n').map(l => l.trimEnd().length), 1);
+  return Math.min(10, Math.floor(252 / (0.61 * widest) * 4) / 4);
+}
+
+// Estrofas → bloques; dentro, cada línea de acordes va pegada a la línea siguiente
+function printStanzas(preHtml) {
+  const lines = preHtml.split('\n').map(l => l.replace(/\s+(<\/span>)?$/, '$1'));   // sin espacios al final
+  const isChords = l => l.includes('class="chord-line"');
+  const out = [];
+  let stanza = [];
   const closeStanza = () => {
     if (!stanza.length) return;
     let blocks = '';
     for (let i = 0; i < stanza.length; i++) {
-      const isChords = l => l.includes('class="chord-line"');
       if (isChords(stanza[i]) && i + 1 < stanza.length && !isChords(stanza[i + 1])) {
         blocks += `<div class="pair">${stanza[i]}\n${stanza[i + 1]}</div>`;
         i++;
       } else {
-        blocks += `<div class="pair">${stanza[i] || ' '}</div>`;
+        blocks += `<div class="pair">${stanza[i]}</div>`;
       }
     }
-    html += `<div class="stanza">${blocks}</div>`;
+    out.push(`<div class="stanza">${blocks}</div>`);
     stanza = [];
   };
   for (const line of lines) {
     if (line.trim()) stanza.push(line); else closeStanza();
   }
   closeStanza();
-  copy.innerHTML = html;
+  return out;
 }
-window.addEventListener('beforeprint', preparePrintCopy);
 
 
 // ── 12c. MIS LISTAS (📋) ─────────────────────────────────────────────────────
@@ -1074,6 +1083,7 @@ function renderMyList() {
            <button onclick="startRenameList()" title="Cambiar el nombre" aria-label="Cambiar el nombre">✏️</button>
            <button onclick="deleteList()" title="Borrar la lista" aria-label="Borrar la lista">🗑️</button>
            ${songs.length ? '<button id="share-list-btn" onclick="shareMyList()" title="Compartir la lista" aria-label="Compartir la lista">📤</button>' : ''}
+           ${songs.length ? '<button id="print-list-btn" onclick="printList()" title="Imprimir la lista o guardarla en PDF" aria-label="Imprimir la lista">🖨️</button>' : ''}
          </span></div>`;
     if (listEdit) {
       const value = listEdit === 'rename' ? listName() : '';
@@ -1115,6 +1125,51 @@ function renderMyList() {
   const input = document.getElementById('list-name-input');
   if (input) { input.focus(); input.select(); }
 }
+
+
+// 🖨️ del recuadro: imprime (o guarda en PDF) todas las canciones de la lista, seguidas, cada una en
+// su tono y como se ven (Do-Re-Mi, solo letra). Mismo papel que una canción (apartado 12b): se llena
+// primero la columna izquierda y luego la derecha. Cada canción lleva su título y su tamaño de letra.
+// Para sacar cada canción se pinta un momento en el visor y luego se deja todo como estaba.
+function printList() {
+  const songs = myListSongs();
+  if (!songs.length) return;
+  const was = { index: currentIndex, steps: transposeSteps };
+  const pre = () => document.querySelector('#song pre');
+  let html = `<h2 class="list-print-title">📋 ${esc(listName())}</h2>`;
+  for (const e of songs) {
+    currentIndex = e.index;
+    transposeSteps = e.steps;
+    song = parseSong(SONGS[e.index].chordpro);
+    if (transposeSteps !== 0) song = song.transpose(transposeSteps);
+    renderSong();
+    const stanzas = printStanzas(pre().innerHTML);
+    const head = `<div class="print-song-title">${esc(document.getElementById('viewer-title').textContent)}</div>
+      <div class="print-song-meta">${esc(document.getElementById('viewer-meta').textContent)}</div>`;
+    // el título va pegado a la primera estrofa (no se queda solo al final de una columna)
+    html += `<div class="print-song" style="--print-size:${printSize(pre().innerText)}pt">
+      <div class="stanza">${head}${(stanzas.shift() || '').replace(/^<div class="stanza">|<\/div>$/g, '')}</div>${stanzas.join('')}</div>`;
+  }
+  // se deja el visor como estaba
+  currentIndex = was.index;
+  transposeSteps = was.steps;
+  if (currentIndex !== null) {
+    song = parseSong(SONGS[currentIndex].chordpro);
+    if (transposeSteps !== 0) song = song.transpose(transposeSteps);
+    renderSong();
+  }
+  let copy = document.getElementById('list-print');
+  if (!copy) {
+    copy = document.createElement('div');
+    copy.id = 'list-print';
+    document.body.appendChild(copy);
+  }
+  copy.innerHTML = html;
+  document.body.classList.add('printing-list');
+  document.title = listName();
+  window.print();
+}
+window.addEventListener('afterprint', () => document.body.classList.remove('printing-list'));
 
 
 // ── 12d. COMPARTIR UNA LISTA CON UN ENLACE ───────────────────────────────────

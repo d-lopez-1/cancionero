@@ -164,7 +164,7 @@ body.dark .my-list-num, body.dark .my-list-tone { color:#4cc38a; }
 /* En papel: solo la canción abierta, sin botones, en blanco y negro (acordes en negrita)
    y con el mismo tamaño de letra siempre, aunque en pantalla se haya cambiado con A- / A+.
    Si no hay canción abierta (Ctrl+P desde la lista), se imprime la lista. */
-#song-print { display:none; }   /* copia de la canción solo para el papel */
+#song-print, #list-print { display:none; }   /* copias solo para el papel (canción / lista entera) */
 
 @media print {
   @page { margin: 12mm; }
@@ -180,11 +180,20 @@ body.dark .my-list-num, body.dark .my-list-tone { color:#4cc38a; }
   #song:has(+ #song-print:not(:empty)) { display:none; }
   #song-print:not(:empty) { display:block; font-family:'Courier New',monospace; font-size:var(--print-size, 10pt); line-height:1.25;
     column-count:2; column-fill:auto; column-gap:8mm; column-rule:0.5pt solid #ccc; }
-  #song-print .stanza { margin-bottom:1.25em; break-inside:avoid; }
-  #song-print .pair { white-space:pre; break-inside:avoid; }
+  #song-print .stanza, #list-print .stanza { margin-bottom:1.25em; break-inside:avoid; }
+  #song-print .pair, #list-print .pair { white-space:pre; break-inside:avoid; }
+  /* lista entera (🖨️ de Mis listas): solo se imprime #list-print, con las canciones seguidas */
+  body.printing-list > *:not(#list-print) { display:none !important; }
+  body.printing-list #list-print { display:block; font-family:'Courier New',monospace; line-height:1.25;
+    column-count:2; column-fill:auto; column-gap:8mm; column-rule:0.5pt solid #ccc; }
+  #list-print .list-print-title { column-span:all; font-family:Arial,sans-serif; font-size:14pt; margin:0 0 8pt 0; }
+  #list-print .print-song { font-size:var(--print-size, 10pt); }
+  #list-print .print-song + .print-song { margin-top:0.5em; }
+  #list-print .print-song-title { font-family:Arial,sans-serif; font-weight:bold; font-size:11pt; }
+  #list-print .print-song-meta { font-family:Arial,sans-serif; color:#444; font-size:8.5pt; margin-bottom:4pt; }
   #song pre { font-size:12pt !important; line-height:1.35; overflow:visible; margin:0; }
   #song .chord-line, body.dark #song .chord-line,
-  #song-print .chord-line { color:#000; font-weight:bold; }
+  #song-print .chord-line, #list-print .chord-line { color:#000; font-weight:bold; }
 }
 
 /* ── MÓVIL (pantallas de 600 px o menos) ─────────────────────────────────── */
