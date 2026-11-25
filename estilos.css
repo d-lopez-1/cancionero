@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════════
    CANCIONERO PASTORAL — estilos (aspecto de la web)
-   Versión 5 · 24/11/2026 (varias listas con nombre)
+   Versión 6 · 24/11/2026 (sin conexión)
    Si cambias este archivo, sube el número de ?v= en index.html
    ═══════════════════════════════════════════════════════════════════════ */
 
@@ -110,6 +110,10 @@ body.dark #lyrics-toggle .chord-icon { color:#4cc38a; }
 .shared-buttons .delete-confirm, body.dark .shared-buttons .delete-confirm { background:#b3261e; border-color:#b3261e; color:#fff; font-weight:bold; }
 #list-add-btn { font-size:14px; padding:6px 12px; margin:-6px 0 12px; border:1px solid #ccc; border-radius:6px; background:#fff; cursor:pointer; }
 
+/* ── AVISO "SIN CONEXIÓN" (las canciones vienen de la copia guardada) ────── */
+#offline-note { display:none; font-size:14px; padding:8px 12px; margin-bottom:12px; border-radius:6px; background:#fff4d6; border:1px solid #e0b84a; color:#5c4400; }
+body.dark #offline-note { background:#3a2f10; border-color:#8a6d1e; color:#f1d98a; }
+
 /* ── BOTÓN FLOTANTE 🔍 (volver arriba, a la búsqueda) ────────────────────── */
 #top-btn { position:fixed; right:16px; bottom:calc(16px + env(safe-area-inset-bottom, 0px)); width:50px; height:50px;
            border-radius:50%; border:1px solid #ccc; background:#fff; font-size:22px; cursor:pointer;
@@ -163,7 +167,7 @@ body.dark .my-list-num, body.dark .my-list-tone { color:#4cc38a; }
 @media print {
   @page { margin: 15mm; }
   body, body.dark { background:#fff; color:#000; max-width:none; margin:0; padding:0; }
-  #dark-toggle, #list-toggle, #my-list, #list-add-btn, .list-add, #search, #theme-filter, .transpose-controls, .song-nav, .song-nav-bottom, #top-btn, #toast { display:none !important; }
+  #offline-note, #dark-toggle, #list-toggle, #my-list, #list-add-btn, .list-add, #search, #theme-filter, .transpose-controls, .song-nav, .song-nav-bottom, #top-btn, #toast { display:none !important; }
   body:has(#song-viewer[style*="block"]) h1.main-title,
   body:has(#song-viewer[style*="block"]) #song-list { display:none; }
   #song-viewer { padding:0; }
