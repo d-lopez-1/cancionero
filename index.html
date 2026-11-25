@@ -5,17 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cancionero</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🎵</text></svg>">
-  <!-- Cancionero Pastoral · Versión 6 (24/11/2026): funciona sin conexión (sw.js guarda la web y las canciones)
+  <!-- Cancionero Pastoral · Versión 7 (25/11/2026): al imprimir, la canción sale en 2 columnas y con letra más pequeña
+       Versión 6 (24/11/2026): funciona sin conexión (sw.js guarda la web y las canciones)
        Versión 5 (24/11/2026): varias listas con nombre (desplegable en el recuadro de 📋)
        Versión 4 (24/11/2026): compartir Mi lista con un enlace (botón 📤 de Mi lista)
        Versión 3 (23/11/2026): botón 📋 Mi lista (lista de canciones propia, guardada en el navegador)
        Versión 2 (23/11/2026): botón 🖨️ imprimir / guardar en PDF y librería comprimida
        Archivos: index.html (esta página), estilos.css (aspecto), cancionero.js (funcionamiento),
        bundle.min.js (librería de acordes ChordSheetJS, comprimida: la misma que bundle.js, pero carga antes).
-       El "?v=6" de los enlaces es el número de versión de cada archivo: súbelo (?v=2.1, ?v=2.2...)
+       El "?v=7" de los enlaces es el número de versión de cada archivo: súbelo (?v=2.1, ?v=2.2...)
        cada vez que cambies ese archivo, para que los navegadores no usen la copia vieja. -->
   <script src="bundle.min.js"></script>
-  <link rel="stylesheet" href="estilos.css?v=6">
+  <link rel="stylesheet" href="estilos.css?v=7">
 </head>
 <body>
 <script>
@@ -73,7 +74,7 @@
 <button id="top-btn" onclick="goToTop()" title="Volver a la búsqueda" aria-label="Volver arriba, a la búsqueda">🔍</button>
 <div id="toast" role="status"></div>
 
-<script src="cancionero.js?v=6"></script>
+<script src="cancionero.js?v=7"></script>
 
 </body>
 </html>

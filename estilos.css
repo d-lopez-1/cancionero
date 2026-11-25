@@ -164,18 +164,27 @@ body.dark .my-list-num, body.dark .my-list-tone { color:#4cc38a; }
 /* En papel: solo la canción abierta, sin botones, en blanco y negro (acordes en negrita)
    y con el mismo tamaño de letra siempre, aunque en pantalla se haya cambiado con A- / A+.
    Si no hay canción abierta (Ctrl+P desde la lista), se imprime la lista. */
+#song-print { display:none; }   /* copia de la canción solo para el papel */
+
 @media print {
-  @page { margin: 15mm; }
+  @page { margin: 12mm; }
   body, body.dark { background:#fff; color:#000; max-width:none; margin:0; padding:0; }
   #offline-note, #dark-toggle, #list-toggle, #my-list, #list-add-btn, .list-add, #search, #theme-filter, .transpose-controls, .song-nav, .song-nav-bottom, #top-btn, #toast { display:none !important; }
   body:has(#song-viewer[style*="block"]) h1.main-title,
   body:has(#song-viewer[style*="block"]) #song-list { display:none; }
   #song-viewer { padding:0; }
   #song-viewer .viewer-header { padding-top:0; }
-  #song-viewer h2 { font-size:16pt; margin:0 0 2pt 0; }
-  #song-viewer .song-meta, body.dark #song-viewer .song-meta { color:#444; font-size:10pt; margin:0 0 10pt 0; }
+  #song-viewer h2 { font-size:13pt; margin:0 0 1pt 0; }
+  #song-viewer .song-meta, body.dark #song-viewer .song-meta { color:#444; font-size:9pt; margin:0 0 8pt 0; }
+  /* en papel se imprime la copia (#song-print) en vez de la canción de la pantalla */
+  #song:has(+ #song-print:not(:empty)) { display:none; }
+  #song-print:not(:empty) { display:block; font-family:'Courier New',monospace; font-size:var(--print-size, 10pt); line-height:1.25;
+    column-count:2; column-fill:auto; column-gap:8mm; column-rule:0.5pt solid #ccc; }
+  #song-print .stanza { margin-bottom:1.25em; break-inside:avoid; }
+  #song-print .pair { white-space:pre; break-inside:avoid; }
   #song pre { font-size:12pt !important; line-height:1.35; overflow:visible; margin:0; }
-  #song .chord-line, body.dark #song .chord-line { color:#000; }
+  #song .chord-line, body.dark #song .chord-line,
+  #song-print .chord-line { color:#000; font-weight:bold; }
 }
 
 /* ── MÓVIL (pantallas de 600 px o menos) ─────────────────────────────────── */
