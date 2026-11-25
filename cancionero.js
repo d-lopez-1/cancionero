@@ -745,9 +745,56 @@ const PAGE_TITLE = document.title;
 function printSong() {
   const s = SONGS[currentIndex];
   document.title = `${s.code} · ${s.title}` + (transposeSteps ? ` (${formatTones(transposeSteps)})` : '');
+  preparePrintCopy();
   window.print();
 }
 window.addEventListener('afterprint', () => { document.title = PAGE_TITLE; });
+
+// Copia de la canción solo para el papel (en pantalla no se ve), en 2 columnas para gastar menos.
+// Se parte por estrofas (separadas por una línea vacía) y una estrofa solo se corta si no cabe
+// entera en una columna; aun así, una línea de acordes nunca se separa de la letra de debajo.
+// Se llena primero la columna izquierda y solo lo que no cabe pasa a la derecha (column-fill:auto
+// en estilos.css). La letra se ajusta a la línea más ancha para que quepa en media hoja (A4),
+// como mucho a 10 pt (las canciones más anchas, de unos 58 caracteres, quedan a 7 pt).
+// Se prepara al pulsar 🖨️ y también con Ctrl+P (evento beforeprint).
+function preparePrintCopy() {
+  const pre = document.querySelector('#song pre');
+  if (!pre || document.getElementById('song-viewer').style.display !== 'block') return;
+  let copy = document.getElementById('song-print');
+  if (!copy) {
+    copy = document.createElement('div');
+    copy.id = 'song-print';
+    document.getElementById('song').after(copy);
+  }
+  const lines = pre.innerHTML.split('\n').map(l => l.replace(/\s+(<\/span>)?$/, '$1'));   // sin espacios al final
+  const widest = Math.max(...pre.innerText.split('\n').map(l => l.trimEnd().length), 1);
+  const size = Math.min(10, Math.floor(252 / (0.61 * widest) * 4) / 4);   // 252 pt = ancho de una columna
+  copy.style.setProperty('--print-size', size + 'pt');
+
+  // estrofas → bloques; dentro, cada línea de acordes va pegada a la línea siguiente
+  let html = '', stanza = [];
+  const closeStanza = () => {
+    if (!stanza.length) return;
+    let blocks = '';
+    for (let i = 0; i < stanza.length; i++) {
+      const isChords = l => l.includes('class="chord-line"');
+      if (isChords(stanza[i]) && i + 1 < stanza.length && !isChords(stanza[i + 1])) {
+        blocks += `<div class="pair">${stanza[i]}\n${stanza[i + 1]}</div>`;
+        i++;
+      } else {
+        blocks += `<div class="pair">${stanza[i] || ' '}</div>`;
+      }
+    }
+    html += `<div class="stanza">${blocks}</div>`;
+    stanza = [];
+  };
+  for (const line of lines) {
+    if (line.trim()) stanza.push(line); else closeStanza();
+  }
+  closeStanza();
+  copy.innerHTML = html;
+}
+window.addEventListener('beforeprint', preparePrintCopy);
 
 
 // ── 12c. MIS LISTAS (📋) ─────────────────────────────────────────────────────
