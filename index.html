@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cancionero</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🎵</text></svg>">
-  <!-- Cancionero Pastoral · Versión 9 (26/11/2026): botón ▶️ de desplazamiento automático en la canción
+  <!-- Cancionero Pastoral · Versión 10 (26/11/2026): carga más rápido (librería de acordes recortada: 1,7 MB → 0,24 MB)
+       Versión 9 (26/11/2026): botón ▶️ de desplazamiento automático en la canción
        Versión 8 (25/11/2026): botón 🖨️ en Mis listas para imprimir la lista entera
        Versión 7 (25/11/2026): al imprimir, la canción sale en 2 columnas y con letra más pequeña
        Versión 6 (24/11/2026): funciona sin conexión (sw.js guarda la web y las canciones)
@@ -14,11 +15,11 @@
        Versión 3 (23/11/2026): botón 📋 Mi lista (lista de canciones propia, guardada en el navegador)
        Versión 2 (23/11/2026): botón 🖨️ imprimir / guardar en PDF y librería comprimida
        Archivos: index.html (esta página), estilos.css (aspecto), cancionero.js (funcionamiento),
-       bundle.min.js (librería de acordes ChordSheetJS, comprimida: la misma que bundle.js, pero carga antes).
-       El "?v=9" de los enlaces es el número de versión de cada archivo: súbelo (?v=2.1, ?v=2.2...)
+       bundle.min.js (librería de acordes ChordSheetJS, recortada: solo las piezas que usa la web; cómo se hizo, al principio del archivo).
+       El "?v=10" de los enlaces es el número de versión de cada archivo: súbelo (?v=2.1, ?v=2.2...)
        cada vez que cambies ese archivo, para que los navegadores no usen la copia vieja. -->
-  <script src="bundle.min.js"></script>
-  <link rel="stylesheet" href="estilos.css?v=9">
+  <script src="bundle.min.js?v=10"></script>
+  <link rel="stylesheet" href="estilos.css?v=10">
 </head>
 <body>
 <script>
@@ -84,7 +85,7 @@
 </div>
 <div id="toast" role="status"></div>
 
-<script src="cancionero.js?v=9"></script>
+<script src="cancionero.js?v=10"></script>
 
 </body>
 </html>
