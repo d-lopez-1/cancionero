@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════════
    CANCIONERO PASTORAL — funcionamiento
-   Versión 6 · 24/11/2026 (funciona sin conexión)
+   Versión 10 · 26/11/2026 (más ligero: librería recortada y sin trozos repetidos)
    Si cambias este archivo, sube el número de ?v= en index.html
 
    ÍNDICE
@@ -103,14 +103,15 @@ function chordToSpanish(chord) {
 function convertChordLine(line) {
   const re = /\S+/g;
   let out = '', m;
-  while ((m = re.exec(line)) !== null) {
-    const col  = m.index;
-    const conv = chordToSpanish(m[0]);
-    if (out.length === 0 && col === 0) out = conv;
-    else if (out.length >= col)        out += ' ' + conv;
-    else                               out = out.padEnd(col, ' ') + conv;
-  }
+  while ((m = re.exec(line)) !== null) out = placeAt(out, m.index, chordToSpanish(m[0]));
   return out;
+}
+
+// Añade tok a la línea out en la columna col; si no cabe, separado por un solo espacio
+function placeAt(out, col, tok) {
+  if (out.length === 0 && col === 0) return tok;
+  if (out.length >= col)             return out + ' ' + tok;
+  return out.padEnd(col, ' ') + tok;
 }
 
 
@@ -222,6 +223,12 @@ function parseSong(text) {
   return parser.parse(marked);
 }
 
+// La canción (posición en SONGS) preparada por la librería, en el tono pedido (semitonos)
+function songInTone(index, steps) {
+  const parsed = parseSong(SONGS[index].chordpro);
+  return steps ? parsed.transpose(steps) : parsed;
+}
+
 // Pinta una línea especial: etiqueta en color normal, el resto en verde si lleva acordes.
 // Los acordes cambian de tono y de notación, también los de dentro del paréntesis ("C (D)" +1 tono
 // → "D (E)"). Lo que no es acorde se queda tal cual. Cada trozo se queda en su columna.
@@ -239,10 +246,7 @@ function renderSpecialLine(line) {
       chord = transposeFullChord(core, transposeSteps);
       if (useSpanishNotation) chord = chordToSpanish(chord);
     }
-    const tok = open + chord + close;
-    if (out.length === 0 && col === 0) out = tok;
-    else if (out.length >= col)        out += ' ' + tok;
-    else                               out = out.padEnd(col, ' ') + tok;
+    out = placeAt(out, col, open + chord + close);
   }
   return label + (hasChords(rest) ? `<span class="chord-line">${out}</span>` : out);
 }
@@ -469,8 +473,7 @@ function loadSong(index, steps = 0, updateLink = true, fromMyList = false) {
   currentIndex   = index;
   openedFromMyList = fromMyList;
   transposeSteps = (steps % 12) || 0;
-  song = parseSong(SONGS[index].chordpro);
-  if (transposeSteps !== 0) song = song.transpose(transposeSteps);
+  song = songInTone(index, transposeSteps);
   renderSong();
   renderList();
   document.getElementById('song-viewer').style.display = 'block';
@@ -594,8 +597,7 @@ function transpose(steps) {
   // 12 semitonos = una octava = mismo tono: el contador vuelve a 0 al llegar a ±12
   transposeSteps = ((transposeSteps + steps) % 12) || 0;
   // Se parte siempre de la canción original, así al volver a 0 queda exactamente igual que en el Sheet
-  song = parseSong(SONGS[currentIndex].chordpro);
-  if (transposeSteps !== 0) song = song.transpose(transposeSteps);
+  song = songInTone(currentIndex, transposeSteps);
   renderSong();
   updateLinkInAddressBar(false);   // el enlace lleva el tono actual (#205/+2)
   rememberListTone();               // si se ve desde Mi lista, la lista guarda este tono
@@ -699,14 +701,19 @@ async function shareSong() {
   const s     = SONGS[currentIndex];
   const url   = location.href;
   const title = `${s.code} · ${s.title}` + (transposeSteps ? ` (${formatTones(transposeSteps)})` : '');
+  await shareOrCopy(title, title, url, 'Enlace copiado');
+}
+
+// En el móvil, menú de compartir del teléfono; en el ordenador, copia el enlace (y avisa con copied)
+async function shareOrCopy(title, text, url, copied) {
   const isTouch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
   if (isTouch && navigator.share) {
-    try { await navigator.share({ title, text: title, url }); } catch (e) {}   // cancelar no es un error
+    try { await navigator.share({ title, text, url }); } catch (e) {}   // cancelar no es un error
     return;
   }
   try {
     await navigator.clipboard.writeText(url);
-    showToast('Enlace copiado');
+    showToast(copied);
   } catch (e) {
     showToast('Copia este enlace: ' + url);
   }
@@ -1144,8 +1151,7 @@ function printList() {
   for (const e of songs) {
     currentIndex = e.index;
     transposeSteps = e.steps;
-    song = parseSong(SONGS[e.index].chordpro);
-    if (transposeSteps !== 0) song = song.transpose(transposeSteps);
+    song = songInTone(e.index, transposeSteps);
     renderSong();
     const stanzas = printStanzas(pre().innerHTML);
     const head = `<div class="print-song-title">${esc(document.getElementById('viewer-title').textContent)}</div>
@@ -1158,8 +1164,7 @@ function printList() {
   currentIndex = was.index;
   transposeSteps = was.steps;
   if (currentIndex !== null) {
-    song = parseSong(SONGS[currentIndex].chordpro);
-    if (transposeSteps !== 0) song = song.transpose(transposeSteps);
+    song = songInTone(currentIndex, transposeSteps);
     renderSong();
   }
   let copy = document.getElementById('list-print');
@@ -1297,17 +1302,7 @@ async function shareMyList() {
     const s = SONGS[e.index];
     return `${i + 1}. ${s.code} · ${s.title}` + (e.steps ? ` (${formatTones(e.steps)})` : '');
   }).join('\n');
-  const isTouch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
-  if (isTouch && navigator.share) {
-    try { await navigator.share({ title, text, url }); } catch (e) {}   // cancelar no es un error
-    return;
-  }
-  try {
-    await navigator.clipboard.writeText(url);
-    showToast('Enlace de la lista copiado');
-  } catch (e) {
-    showToast('Copia este enlace: ' + url);
-  }
+  await shareOrCopy(title, text, url, 'Enlace de la lista copiado');
 }
 
 
