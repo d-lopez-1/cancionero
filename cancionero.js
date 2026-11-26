@@ -465,6 +465,7 @@ function renderList() {
 // fromMyList: true cuando se abre desde Mi lista (entonces ⏪ ⏩ siguen Mi lista, apartado 12c)
 function loadSong(index, steps = 0, updateLink = true, fromMyList = false) {
   const wasOpen  = currentIndex !== null;
+  stopAutoScroll();   // la canción nueva empieza parada (apartado 12f)
   currentIndex   = index;
   openedFromMyList = fromMyList;
   transposeSteps = (steps % 12) || 0;
@@ -477,14 +478,17 @@ function loadSong(index, steps = 0, updateLink = true, fromMyList = false) {
   // Desde la lista se añade un paso al historial (así "atrás" vuelve a la lista);
   // de una canción a otra se sustituye (así "atrás" no va recorriendo canciones)
   if (updateLink) updateLinkInAddressBar(!wasOpen);
+  updateAutoScrollButton();
 }
 
 // Cierra la canción y deja solo la lista (lo que hace el botón "atrás")
 function closeSong() {
+  stopAutoScroll();
   currentIndex   = null;
   openedFromMyList = false;
   transposeSteps = 0;
   document.getElementById('song-viewer').style.display = 'none';
+  updateAutoScrollButton();
   renderList();
   window.scrollTo(0, 0);
 }
@@ -1334,6 +1338,91 @@ function sheetCopyInfo(resp, text) {
     caches.open('cancionero').then(c => c.put(SHEET_CSV_URL, new Response(text, { headers }))).catch(() => {});
   }
 }
+
+
+// ── 12f. DESPLAZAMIENTO AUTOMÁTICO (▶️) ─────────────────────────────────────
+// Botón redondo abajo a la izquierda, solo con una canción abierta. ▶️ = la página baja sola;
+// ⏸️ = pararla. Mientras baja salen − y + para la velocidad (1 a 10, se recuerda en el navegador).
+// Se para al tocar la pantalla, mover con el dedo o la rueda del ratón, pulsar una tecla de
+// desplazamiento, llegar al final, o abrir/cerrar una canción. Mientras baja, se pide al móvil
+// que no apague la pantalla (si el navegador lo permite).
+
+// Píxeles por segundo de cada velocidad (1 = muy despacio … 10 = muy deprisa)
+const SCROLL_SPEEDS = [5, 7, 9, 12, 15, 19, 24, 30, 38, 48];
+let scrollSpeed = Math.max(1, Math.min(10, Math.round(Number(loadPref('cancionero.scrollSpeed', 4))) || 4));
+let autoScrolling = false;
+let scrollPos = 0, scrollLastTime = 0, wakeLock = null;
+
+function toggleAutoScroll() {
+  if (autoScrolling) stopAutoScroll(); else startAutoScroll();
+}
+
+function startAutoScroll() {
+  if (currentIndex === null) return;
+  // Si ya está al final, no hay nada que bajar
+  if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2) {
+    showToast('Ya estás al final de la canción');
+    return;
+  }
+  autoScrolling = true;
+  scrollPos = window.scrollY;
+  scrollLastTime = 0;
+  try { navigator.wakeLock.request('screen').then(l => { wakeLock = l; }).catch(() => {}); } catch (e) {}
+  updateAutoScrollButton();
+  requestAnimationFrame(autoScrollStep);
+}
+
+function stopAutoScroll() {
+  if (!autoScrolling) return;
+  autoScrolling = false;
+  try { if (wakeLock) wakeLock.release(); } catch (e) {}
+  wakeLock = null;
+  updateAutoScrollButton();
+}
+
+function autoScrollStep(time) {
+  if (!autoScrolling) return;
+  if (scrollLastTime) {
+    const seconds = Math.min(0.1, (time - scrollLastTime) / 1000);   // tras una pausa, sin saltos
+    // Si la página se ha movido por otra cosa (p. ej. aún está bajando hasta la canción), se sigue desde ahí
+    if (Math.abs(window.scrollY - scrollPos) > 2) scrollPos = window.scrollY;
+    scrollPos += SCROLL_SPEEDS[scrollSpeed - 1] * seconds;
+    window.scrollTo(0, scrollPos);
+    if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2) {
+      stopAutoScroll();   // final de la canción
+      return;
+    }
+  }
+  scrollLastTime = time;
+  requestAnimationFrame(autoScrollStep);
+}
+
+function changeScrollSpeed(delta) {
+  scrollSpeed = Math.max(1, Math.min(10, scrollSpeed + delta));
+  savePref('cancionero.scrollSpeed', scrollSpeed);
+  updateAutoScrollButton();
+}
+
+// Se ve solo con una canción abierta; − velocidad + solo mientras baja
+function updateAutoScrollButton() {
+  document.getElementById('autoscroll').classList.toggle('show', currentIndex !== null);
+  document.getElementById('autoscroll').classList.toggle('on', autoScrolling);
+  const btn = document.getElementById('autoscroll-btn');
+  btn.textContent = autoScrolling ? '⏸️' : '▶️';
+  btn.title = autoScrolling ? 'Parar el desplazamiento' : 'Desplazamiento automático';
+  btn.setAttribute('aria-label', btn.title);
+  document.getElementById('autoscroll-value').textContent = scrollSpeed;
+}
+
+// Tocar la pantalla (fuera de estos botones), la rueda o las flechas / AvPág / RePág → se para
+function stopOnUserAction(e) {
+  if (autoScrolling && !e.target.closest('#autoscroll')) stopAutoScroll();
+}
+['touchstart', 'mousedown', 'wheel'].forEach(ev =>
+  window.addEventListener(ev, stopOnUserAction, { passive: true }));
+window.addEventListener('keydown', e => {
+  if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End'].includes(e.key)) stopAutoScroll();
+});
 
 
 // ── 13. INICIO ───────────────────────────────────────────────────────────────
