@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════════
    CANCIONERO PASTORAL — funcionamiento
-   Versión 10 · 26/11/2026 (más ligero: librería recortada y sin trozos repetidos)
+   Versión 11 · 28/11/2026 (las secciones salen de la columna Sección del Sheet)
    Si cambias este archivo, sube el número de ?v= en index.html
 
    ÍNDICE
@@ -30,12 +30,11 @@
 // Hoja "Songs" del Google Sheet, publicada como CSV
 const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSrDH4DpWxwKH0tlNvUvtPclKxPLOjpzat8T_gjtNR6gS2talVoCf98s9G_bdP6YqlmjwLFCTkKM98Y/pub?gid=450216955&single=true&output=csv';
 
-// Secciones, en el orden en que salen. Deben coincidir EXACTAMENTE con la columna D del Sheet
-const THEMES = [
-  "General", "Eucaristía", "María",
-  "Adviento-Navidad", "Cuaresma-Pascua", "SaFa", "Aclamaciones",
-  "Hakuna",
-];
+// Hoja "Secciones" del mismo Sheet, publicada como CSV: la columna "Sección" da el ORDEN
+// de las secciones. Las secciones ya no se escriben aquí: salen las que tienen alguna
+// canción en la columna Sección de "Songs" (ver THEMES en el apartado 7).
+// Una canción con la Sección vacía no sale en la lista (borrador).
+const SECTIONS_CSV_URL = SHEET_CSV_URL.replace(/gid=\d+/, 'gid=17569509');
 
 
 // ── 2. ESTADO Y PREFERENCIAS GUARDADAS ───────────────────────────────────────
@@ -48,6 +47,7 @@ let currentIndex   = null;   // canción abierta (posición en SONGS) o null
 let transposeSteps = 0;      // semitonos de cambio de tono de la canción abierta (-11 … +11)
 let song           = null;   // canción abierta, ya preparada por la librería
 let activeTheme    = null;   // sección elegida en el filtro (null = Todas)
+let THEMES         = [];     // secciones con canciones, en el orden de la hoja Secciones (apartado 7)
 
 // Preferencias guardadas en el navegador (se recuerdan al recargar)
 function loadPref(name, fallback) {
@@ -344,6 +344,7 @@ function showListMessage(text, isError) {
 
 async function loadFromSheet() {
   showListMessage('Cargando canciones...');
+  const sectionOrder = loadSectionOrder();   // a la vez que las canciones
   try {
     const resp = await fetch(SHEET_CSV_URL);
     const text = await resp.text();
@@ -378,6 +379,13 @@ async function loadFromSheet() {
         return { code: r[C.code].trim(), title: r[C.title].trim(), key, section: r[C.section].trim(), chordpro };
       });
 
+    // Secciones: las que tienen alguna canción, en el orden de la hoja Secciones.
+    // Las que no estén en esa hoja (o si no se puede leer) van detrás, en el orden de su primera canción.
+    const inUse = [...new Set(SONGS.flatMap(songSections))];
+    const order = (await sectionOrder).filter(t => inUse.includes(t));
+    THEMES = [...new Set([...order, ...inUse])];
+    if (activeTheme !== null && !THEMES.includes(activeTheme)) activeTheme = null;
+
     renderThemeFilter();
     renderList();
     openFromLink();   // si se ha abierto un enlace a una canción (#205/+2), se abre
@@ -390,14 +398,43 @@ async function loadFromSheet() {
 
 // ── 8. LISTA DE CANCIONES Y FILTRO POR SECCIÓN ───────────────────────────────
 
+// Secciones de cada canción (por ahora una sola; vacía = borrador, ninguna).
+// Todo lo demás pasa por aquí, así que permitir varias secciones por canción
+// solo obligaría a cambiar esta función.
+function songSections(s) {
+  return s.section ? [s.section] : [];
+}
+
+// Texto seguro para meterlo en el HTML (por si una sección lleva < > & o comillas)
+function escapeHtml(text) {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// Lee el orden de las secciones de la hoja Secciones (columna "Sección"; si no, la primera).
+// Si falla, devuelve una lista vacía y se usa el orden de aparición.
+async function loadSectionOrder() {
+  try {
+    const resp = await fetch(SECTIONS_CSV_URL);
+    if (!resp.ok) return [];
+    const text = await resp.text();
+    if (!resp.headers.get('X-Cancionero-Copia') && window.caches)   // copia para usarla sin conexión
+      caches.open('cancionero').then(c => c.put(SECTIONS_CSV_URL,
+        new Response(text, { headers: { 'Content-Type': 'text/csv; charset=utf-8' } }))).catch(() => {});
+    const rows = parseCSV(text);
+    const c = Math.max(0, (rows[0] || []).map(h => (h || '').trim().toLowerCase()).indexOf('sección'));
+    return rows.slice(1).map(r => (r[c] || '').trim()).filter(Boolean);
+  } catch (e) {
+    return [];
+  }
+}
+
 function renderThemeFilter() {
-  const div     = document.getElementById('theme-filter');
-  const inUse   = new Set(SONGS.map(s => s.section));
-  const visible = THEMES.filter(t => inUse.has(t));
-  div.innerHTML = ['Todas', ...visible].map(t => {
-    const isActive = (t === 'Todas' && activeTheme === null) || t === activeTheme;
-    const onclick  = t === 'Todas' ? 'setTheme(null)' : `setTheme('${t}')`;
-    return `<button onclick="${onclick}" class="${isActive ? 'active' : ''}">${t}</button>`;
+  const div = document.getElementById('theme-filter');
+  // El botón lleva el número de la sección (no su nombre), así funcionan nombres con apóstrofo
+  div.innerHTML = ['Todas', ...THEMES].map((t, i) => {
+    const isActive = (i === 0 && activeTheme === null) || t === activeTheme;
+    const onclick  = i === 0 ? 'setTheme(null)' : `setTheme(THEMES[${i - 1}])`;
+    return `<button onclick="${onclick}" class="${isActive ? 'active' : ''}">${escapeHtml(t)}</button>`;
   }).join('');
 }
 
@@ -413,7 +450,7 @@ function sinTildes(text) {
   return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
-// Canciones de la lista, en el orden en que salen (por secciones, en el orden de THEMES),
+// Canciones de la lista, en el orden en que salen (por secciones, en el orden del Sheet),
 // filtradas por la sección elegida y por el buscador (busca en título, código y
 // letra/acordes, sin tener en cuenta las tildes). Con withFilters = false, todas.
 function listedSongs(withFilters = true) {
@@ -422,13 +459,13 @@ function listedSongs(withFilters = true) {
   const filtered = SONGS
     .map((s, i) => ({ ...s, index: i }))
     .filter(s => {
-      if (theme && s.section !== theme) return false;
+      if (theme && !songSections(s).includes(theme)) return false;
       if (!q) return true;
       return sinTildes(s.title).includes(q)
           || sinTildes(s.code).includes(q)
           || sinTildes(s.chordpro).includes(q);
     });
-  return THEMES.flatMap(t => filtered.filter(s => s.section === t));
+  return THEMES.flatMap(t => filtered.filter(s => songSections(s).includes(t)));
 }
 
 // Lista agrupada por sección
@@ -452,7 +489,7 @@ function renderList() {
   let html = '';
   for (const theme of orderedThemes) {
     if (orderedThemes.length > 1)
-      html += `<div class="theme-group-title">${theme}</div>`;
+      html += `<div class="theme-group-title">${escapeHtml(theme)}</div>`;
     for (const s of groups[theme]) {
       html += `<li class="${s.index === currentIndex ? 'active' : ''}" onclick="loadSong(${s.index})">
         <span class="song-code">${s.code}</span>${s.title}${listAddButton(s.index)}
